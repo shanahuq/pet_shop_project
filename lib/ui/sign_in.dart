@@ -153,54 +153,56 @@ class _SignInState extends State<SignIn> {
                 ],
               ),
               SizedBox(height: 30.h),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Padding(
-                    padding: EdgeInsets.only(left: 40.w),
-                    child: OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        minimumSize: Size(140.w, 50.h),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12.r),
+              SingleChildScrollView(scrollDirection: Axis.horizontal,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.only(left: 40.w),
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: Size(140.w, 50.h),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12.r),
+                          ),
+                          side: BorderSide(color: Color(0xffDFC0BA)),
                         ),
-                        side: BorderSide(color: Color(0xffDFC0BA)),
-                      ),
-                      onPressed: () {},
-                      icon: Image.asset('assets/SVG.png', height: 20.h),
-                      label: Text(
-                        'Google',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12.sp,
-                          color: Colors.black,
-                        ),
-                      ),
-                    ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.only(right: 20.w),
-                    child: OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        minimumSize: Size(140.w, 50.h),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12.r),
-                        ),
-                        side: BorderSide(color: Color(0xffDFC0BA)),
-                      ),
-                      onPressed: () {},
-                      icon: Image.asset('assets/SVG (1).png', height: 20.h),
-                      label: Text(
-                        'Apple',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12.sp,
-                          color: Colors.black,
+                        onPressed: () {},
+                        icon: Image.asset('assets/SVG.png', height: 20.h),
+                        label: Text(
+                          'Google',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12.sp,
+                            color: Colors.black,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                    Padding(
+                      padding: EdgeInsets.only(right: 10.w),
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: Size(140.w, 50.h),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12.r),
+                          ),
+                          side: BorderSide(color: Color(0xffDFC0BA)),
+                        ),
+                        onPressed: () {},
+                        icon: Image.asset('assets/SVG (1).png', height: 20.h),
+                        label: Text(
+                          'Apple',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12.sp,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
               SizedBox(height: 40.h),
               Row(mainAxisAlignment: MainAxisAlignment.center,

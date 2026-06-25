@@ -167,7 +167,6 @@ class _SignUpState extends State<SignUp> {
               ),
               SizedBox(height: 30.h),
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Padding(
                     padding: EdgeInsets.symmetric(horizontal: 30.w),
@@ -190,7 +189,7 @@ class _SignUpState extends State<SignUp> {
                     ),
                   ),
                   Padding(
-                    padding: EdgeInsets.only(right: 25.w),
+                    padding: EdgeInsets.only(right: 10.w),
                     child: OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
                         minimumSize: Size(140.w, 50.h),
