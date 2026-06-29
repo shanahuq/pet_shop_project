@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:pet_shop_project/ui/home_page.dart';
+import 'package:pet_shop_project/ui/product_details.dart';
 import 'package:pet_shop_project/ui/sign_in.dart';
 import 'package:pet_shop_project/ui/sign_up.dart';
 import 'package:pet_shop_project/ui/splash_screen.dart';
@@ -25,7 +26,7 @@ class MyApp extends StatelessWidget {
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         ),
-        home: const HomePage (),
+        home: const ProductDetails (),
       ),
     );
   }
