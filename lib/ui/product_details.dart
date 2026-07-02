@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:pet_shop_project/ui/cart_page.dart';
 
 class ProductDetails extends StatefulWidget {
   const ProductDetails({super.key});
@@ -252,67 +253,133 @@ class _ProductDetailsState extends State<ProductDetails> {
                     },
                   ),
                 ),
-                SizedBox(height: 25.h),
-                Row(
-                  children: [
-                    Container(
-                      height: 55.h,
-                      width: 55.w,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16.r),
-                        border: Border.all(
-                          color: isfavorite ?  Color(0xffA73927):Colors.grey ,
-                        ),
-                      ),
-                      child: IconButton(
-                        onPressed: () {
-                          setState(() {
-                            isfavorite = !isfavorite;
-                          });
-                        },
-                        icon: Icon(
-                          isfavorite 
-                          ? Icons.favorite 
-                          : Icons.favorite_border,
-                          color:
-                              isfavorite
-                                  ? const Color(0xffA73927)
-                                  : Colors.grey,
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: 15.w),
-                    Expanded(
-                      child: SizedBox(
-                        height: 55.h,
-                        child: ElevatedButton.icon(
-                          onPressed: () {},
-                          icon: Icon(
-                            Icons.shopping_bag_outlined,
-                            color: Colors.grey,
-                          ),
-                          label: Text(
-                            'Add to Cart',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 16.sp,
-                              color: Colors.white,
-                            ),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Color(0xffA73927),
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16.r),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+
+                // SizedBox(height: 25.h),
+                // Row(
+                //   children: [
+                //     Container(
+                //       height: 55.h,
+                //       width: 55.w,
+                //       decoration: BoxDecoration(
+                //         borderRadius: BorderRadius.circular(16.r),
+                //         border: Border.all(
+                //           color: isfavorite ?  Color(0xffA73927):Colors.grey ,
+                //         ),
+                //       ),
+                //       child: IconButton(
+                //         onPressed: () {
+                //           setState(() {
+                //             isfavorite = !isfavorite;
+                //           });
+                //         },
+                //         icon: Icon(
+                //           isfavorite
+                //           ? Icons.favorite
+                //           : Icons.favorite_border,
+                //           color:
+                //               isfavorite
+                //                   ? const Color(0xffA73927)
+                //                   : Colors.grey,
+                //         ),
+                //       ),
+                //     ),
+                //     SizedBox(width: 15.w),
+                //     Expanded(
+                //       child: SizedBox(
+                //         height: 55.h,
+                //         child: ElevatedButton.icon(
+                //           onPressed: () {},
+                //           icon: Icon(
+                //             Icons.shopping_bag_outlined,
+                //             color: Colors.grey,
+                //           ),
+                //           label: Text(
+                //             'Add to Cart',
+                //             style: TextStyle(
+                //               fontWeight: FontWeight.w600,
+                //               fontSize: 16.sp,
+                //               color: Colors.white,
+                //             ),
+                //           ),
+                //           style: ElevatedButton.styleFrom(
+                //             backgroundColor: Color(0xffA73927),
+                //             elevation: 0,
+                //             shape: RoundedRectangleBorder(
+                //               borderRadius: BorderRadius.circular(16.r),
+                //             ),
+                //           ),
+                //         ),
+                //       ),
+                //     ),
+                //   ],
+                // ),
               ],
             ),
+          ),
+        ),
+      ),
+
+      bottomNavigationBar: SafeArea(
+        child: Container(
+          padding: EdgeInsets.symmetric(horizontal: 30.w, vertical: 15.h),
+          decoration: const BoxDecoration(color: Colors.white),
+          child: Row(
+            children: [
+              Container(
+                height: 55.h,
+                width: 55.w,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16.r),
+                  border: Border.all(
+                    color: isfavorite ? const Color(0xffA73927) : Colors.grey,
+                  ),
+                ),
+                child: IconButton(
+                  onPressed: () {
+                    setState(() {
+                      isfavorite = !isfavorite;
+                    });
+                  },
+                  icon: Icon(
+                    isfavorite ? Icons.favorite : Icons.favorite_border,
+                    color: isfavorite ? const Color(0xffA73927) : Colors.grey,
+                  ),
+                ),
+              ),
+              SizedBox(width: 15.w),
+              Expanded(
+                child: SizedBox(
+                  height: 55.h,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => CartPage()),
+                      );
+                    },
+                    icon: const Icon(
+                      Icons.shopping_bag_outlined,
+                      color: Colors.white,
+                    ),
+                    label: Text(
+                      'Add to Cart',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16.sp,
+                        color: Colors.white,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xffA73927),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16.r),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
