@@ -376,13 +376,13 @@ class _HomePageState extends State<HomePage> {
             BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
 
             BottomNavigationBarItem(
-              icon: Icon(Icons.favorite_border),
-              label: "Wishlist",
+              icon: Icon(Icons.search),
+              label: "Search",
             ),
 
             BottomNavigationBarItem(
-              icon: Icon(Icons.shopping_cart_outlined),
-              label: "Cart",
+            icon: Icon(Icons.favorite_border),
+              label: "Wishlist",
             ),
 
             BottomNavigationBarItem(

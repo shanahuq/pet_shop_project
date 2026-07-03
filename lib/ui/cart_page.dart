@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:pet_shop_project/ui/checkout.dart';
 import 'home_page.dart';
 
 class CartPage extends StatefulWidget {
@@ -155,13 +156,10 @@ class _CartPageState extends State<CartPage> {
           },
           items: const [
             BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
+            BottomNavigationBarItem(icon: Icon(Icons.search), label: "Search"),
             BottomNavigationBarItem(
               icon: Icon(Icons.favorite_border),
               label: "Wishlist",
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.shopping_cart_outlined),
-              label: "Cart",
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.person_outline),
@@ -242,25 +240,36 @@ class CartTab extends StatelessWidget {
               ),
             ],
           ),
-          SizedBox(height: 40.h),
+          Spacer(),
+          // SizedBox(height: 40.h),
           SizedBox(
             width: 300.w,
             height: 55.h,
             child: ElevatedButton(
-              onPressed: () {},
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => Checkout()),
+                );
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Color(0xffA73927),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16.r),
                 ),
               ),
-              child: Text(
-                'Proceed to Checkout',
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 16.sp,
-                  color: Colors.white,
-                ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Proceed to Checkout',
+                    style: TextStyle(fontSize: 16.sp, color: Colors.white),
+                  ),
+                  Padding(
+                    padding: EdgeInsets.only(left: 10.w),
+                    child: Icon(Icons.arrow_forward, color: Colors.white),
+                  ),
+                ],
               ),
             ),
           ),
