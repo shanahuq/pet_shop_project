@@ -3,14 +3,14 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:pet_shop_project/ui/checkout.dart';
 import 'home_page.dart';
 
-class CartPage extends StatefulWidget {
-  const CartPage({super.key});
+class WishListPage extends StatefulWidget {
+  const WishListPage({super.key});
 
   @override
-  State<CartPage> createState() => _CartPageState();
+  State<WishListPage> createState() => _CartPageState();
 }
 
-class _CartPageState extends State<CartPage> {
+class _CartPageState extends State<WishListPage> {
   int selectedIndex = 2;
   @override
   Widget build(BuildContext context) {
@@ -120,52 +120,6 @@ class _CartPageState extends State<CartPage> {
               Expanded(child: TabBarView(children: [CartTab(), WishListTab()])),
             ],
           ),
-        ),
-        bottomNavigationBar: BottomNavigationBar(
-          currentIndex: selectedIndex,
-          selectedItemColor: const Color(0xffA73927),
-          unselectedItemColor: Colors.grey,
-          type: BottomNavigationBarType.fixed,
-          onTap: (index) {
-            if (index == selectedIndex) return;
-
-            switch (index) {
-              case 0:
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => const HomePage()),
-                ); // or Navigator.push to HomePage
-                break;
-
-              case 1:
-                // Navigate to Wishlist page
-                break;
-
-              case 2:
-                // Already on Cart page
-                break;
-
-              case 3:
-                // Navigate to Profile page
-                break;
-            }
-
-            setState(() {
-              selectedIndex = index;
-            });
-          },
-          items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-            BottomNavigationBarItem(icon: Icon(Icons.search), label: "Search"),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.favorite_border),
-              label: "Wishlist",
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline),
-              label: "Profile",
-            ),
-          ],
         ),
       ),
     );

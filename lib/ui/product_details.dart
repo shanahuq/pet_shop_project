@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:pet_shop_project/ui/cart_page.dart';
+import 'package:pet_shop_project/ui/wish_list_page.dart';
 
 class ProductDetails extends StatefulWidget {
   const ProductDetails({super.key});
@@ -354,7 +354,7 @@ class _ProductDetailsState extends State<ProductDetails> {
                     onPressed: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => CartPage()),
+                        MaterialPageRoute(builder: (context) => WishListPage()),
                       );
                     },
                     icon: const Icon(

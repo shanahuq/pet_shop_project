@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'cart_page.dart';
+import 'package:pet_shop_project/ui/search_page.dart';
+import 'wish_list_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -354,42 +355,6 @@ class _HomePageState extends State<HomePage> {
               ],
             ),
           ),
-        ),
-
-        bottomNavigationBar: BottomNavigationBar(
-          selectedItemColor: const Color(0xffA73927),
-          unselectedItemColor: Colors.grey,
-          currentIndex: selectedIndex,
-          onTap: (index) {
-            setState(() {
-              selectedIndex = index;
-            });
-
-            if (index == 2) {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const CartPage()),
-              );
-            }
-          },
-          items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-
-            BottomNavigationBarItem(
-              icon: Icon(Icons.search),
-              label: "Search",
-            ),
-
-            BottomNavigationBarItem(
-            icon: Icon(Icons.favorite_border),
-              label: "Wishlist",
-            ),
-
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline),
-              label: "Profile",
-            ),
-          ],
         ),
       ),
     );
