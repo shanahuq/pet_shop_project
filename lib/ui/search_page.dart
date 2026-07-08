@@ -14,6 +14,37 @@ class _SearchPageState extends State<SearchPage> {
     'Chew toys',
     'Cat scratcher',
   ];
+  final List<Map<String, dynamic>> categories = [
+    {
+      'name': 'Dogs',
+      'bgcolor': const Color.fromARGB(54, 242, 112, 89),
+      'icon': Icons.pets,
+      'iconcolor': const Color(0xffF27059),
+    },
+    {
+      'name': 'Cats',
+      'bgcolor': const Color.fromARGB(53, 0, 108, 118),
+      'icon': Icons.cruelty_free,
+      'iconcolor': const Color(0xff006D76),
+    },
+    {
+      'name': 'Fish',
+      'bgcolor': const Color.fromARGB(50, 72, 71, 66),
+      'icon': Icons.set_meal,
+      'iconcolor': const Color(0xff484742),
+    },
+    {
+      'name': 'Birds',
+      'bgcolor': const Color.fromARGB(30, 242, 112, 89),
+      'icon': Icons.flutter_dash,
+      'iconcolor': const Color(0xff57423D),
+    },
+  ];
+  final List<Map<String, dynamic>> trendingSearch = [
+    {'title': 'Organic Puppy Food', 'subtitle': '1.2k searches today'},
+    {'title': 'Smart Interactive Collars', 'subtitle': '800+ searches today'},
+    {'title': 'Orthopedic Cat Beds', 'subtitle': 'Rising interest'},
+  ];
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -143,6 +174,140 @@ class _SearchPageState extends State<SearchPage> {
                     ),
                   ),
                 ),
+                SizedBox(height: 20.h),
+
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: List.generate(categories.length, (index) {
+                    final item = categories[index];
+
+                    return Column(
+                      children: [
+                        Material(
+                          color: item['bgcolor'],
+                          shape: const CircleBorder(),
+                          child: InkWell(
+                            customBorder: const CircleBorder(),
+                            onTap: () {},
+                            child: Padding(
+                              padding: EdgeInsets.all(18.w),
+                              child: Icon(
+                                item['icon'],
+                                color: item['iconcolor'],
+                                size: 30.sp,
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: 8.h),
+                        Text(
+                          item["name"],
+                          style: TextStyle(
+                            fontSize: 14.sp,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    );
+                  }),
+                ),
+                SizedBox(height: 20.h),
+                Container(
+                  width: 350.w,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16.r),
+                    color: Colors.white,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.trending_up,
+                            color: Color(0xffA73927),
+                            size: 25.sp,
+                          ),
+                          Padding(
+                            padding: EdgeInsets.all(8.0),
+                            child: Text(
+                              'Trending Searches',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 20.sp,
+                                color: Color(0xff1B1C1C),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 15.h),
+                      ListView.separated(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: trendingSearch.length,
+                        separatorBuilder:
+                            (_, __) => Divider(
+                              height: 30.h,
+                              color: const Color.fromARGB(64, 158, 158, 158),
+                            ),
+                        itemBuilder: (context, index) {
+                          final item = trendingSearch[index];
+                          return Row(
+                            children: [
+                              Text(
+                                '${index + 1}',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 16.sp,
+                                  color: Color(0xffA73927),
+                                ),
+                              ),
+                              SizedBox(width: 15.w),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      item['title'],
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w400,
+                                        fontSize: 14.sp,
+                                        color: Color(0xff1B1C1C),
+                                      ),
+                                    ),
+                                    Text(
+                                      item['subtitle'],
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w400,
+                                        fontSize: 12.sp,
+                                        color: Color(0xff57423D),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Icon(Icons.arrow_forward_ios, color: Colors.grey),
+                            ],
+                          );
+                        },
+                      ),
+                      SizedBox(height: 40.h),
+                      Container(
+                        height: 190.h,
+                        width: 350.w,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16.r),
+                        ),
+                        child: Image.asset(
+                          'assets/summer_sale.png',
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: 40.h),
               ],
             ),
           ),
