@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:pet_shop_project/ui/dog_essentials.dart';
 
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
@@ -188,7 +189,16 @@ class _SearchPageState extends State<SearchPage> {
                           shape: const CircleBorder(),
                           child: InkWell(
                             customBorder: const CircleBorder(),
-                            onTap: () {},
+                            onTap: () {
+                              if (item['name'] == 'Dogs') {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => DogEssentials(),
+                                  ),
+                                );
+                              }
+                            },
                             child: Padding(
                               padding: EdgeInsets.all(18.w),
                               child: Icon(
