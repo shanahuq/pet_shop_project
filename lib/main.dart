@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:pet_shop_project/ui/bottom_navigation_button.dart';
 import 'package:pet_shop_project/ui/checkout.dart';
 import 'package:pet_shop_project/ui/home_page.dart';
+import 'package:pet_shop_project/ui/organic_grain.dart';
 import 'package:pet_shop_project/ui/product_details.dart';
 import 'package:pet_shop_project/ui/sign_in.dart';
 import 'package:pet_shop_project/ui/sign_up.dart';
@@ -28,7 +29,7 @@ class MyApp extends StatelessWidget {
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         ),
-        home: const BottomNavigationButton (),
+        home: const OrganicGrain (),
       ),
     );
   }

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:pet_shop_project/ui/dog_essentials.dart';
+import 'package:pet_shop_project/ui/search_categories.dart';
 import 'package:pet_shop_project/ui/wish_list_page.dart';
 import 'package:pet_shop_project/ui/home_page.dart';
 import 'package:pet_shop_project/ui/profile_page.dart';

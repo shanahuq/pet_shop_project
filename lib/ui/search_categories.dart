@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-class DogEssentials extends StatefulWidget {
-  const DogEssentials({super.key});
+class SearchCategories extends StatefulWidget {
+  final String title;
+  const SearchCategories ({
+    super.key,
+    required this.title
+  });
 
   @override
-  State<DogEssentials> createState() => _DogEssentialsState();
+  State<SearchCategories> createState() => _SearchCategoriesState();
 }
 
-class _DogEssentialsState extends State<DogEssentials> {
+class _SearchCategoriesState extends State<SearchCategories> {
   int selectedTab = 0;
   final List<String> tabs = ['All Items', 'Toys', 'Walk Gear', 'Wellness'];
   final List<Map<String, dynamic>> products = [
@@ -114,7 +118,7 @@ class _DogEssentialsState extends State<DogEssentials> {
                     ),
                   ),
                   Text(
-                    'Dog Essentials',
+widget.title,
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 12.sp,
@@ -124,7 +128,7 @@ class _DogEssentialsState extends State<DogEssentials> {
                 ],
               ),
               Text(
-                'Dog Essentials',
+                widget.title,
                 style: TextStyle(
                   fontWeight: FontWeight.w700,
                   fontSize: 28.sp,
@@ -214,7 +218,7 @@ class _DogEssentialsState extends State<DogEssentials> {
                   },
                 ),
               ),
-              SizedBox(height: 20.h,),
+              SizedBox(height: 20.h),
               Expanded(
                 child: Builder(
                   builder: (context) {
@@ -236,116 +240,125 @@ class _DogEssentialsState extends State<DogEssentials> {
                               color: Colors.white,
                               border: Border.all(color: Color(0xffFFFFFF)),
                             ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Stack(
-                                  children: [
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(16.r),
-                                      child: Image.asset(
-                                        item['image'],
-                                        height: 140.h,
-                                        width: 140.w,
-                                      ),
-                                    ),
-                                    Positioned(
-                                      top: 8,
-                                      right: 12,
-                                      child: GestureDetector(
-                                        onTap: () {
-                                          setState(() {
-                                            products[index]['favorite'] =
-                                                !products[index]['favorite'];
-                                          });
-                                        },
-                                        child: CircleAvatar(
-                                          radius: 16.r,
-                                          backgroundColor: Colors.white,
-                                          child: Icon(
-                                            products[index]['favorite']
-                                                ? Icons.favorite_border
-                                                : Icons.favorite,
-                                            size: 18.sp,
-                                            color:
-                                                products[index]['favorite']
-                                                    ? Colors.grey
-                                                    : Color(0xffA73927),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                SizedBox(height: 10.h),
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Icons.star,
-                                      color: Color(0xffA73927),
-                                      size: 16.sp,
-                                    ),
-                                    SizedBox(width: 4.w),
-                                    Text(
-                                      item['rating'],
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 12.sp,
-                                        color: Color(0xff57423D),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                SizedBox(height: 8.h),
-                                Text(
-                                  item['name'],
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w400,
-                                    fontSize: 16.sp,
-                                    color: Color(0xff1B1C1C),
-                                  ),
-                                ),
-                                SizedBox(height: 5.h),
-                                Text(
-                                  item['price'],
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w400,
-                                    fontSize: 18.sp,
-                                    color: Color(0xffA73927),
-                                  ),
-                                ),
-                                OutlinedButton(
-                                  style: OutlinedButton.styleFrom(
-                                    backgroundColor: Color(0xffA73927),
-                                    side: BorderSide(color: Color(0xffA73927)),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16.r),
-                                    ),
-                                  ),
-                                  onPressed: () {},
-                                  child: Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.center,
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.vertical,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Stack(
                                     children: [
-                                      Padding(
-                                        padding: EdgeInsets.all(15.0),
-                                        child: Icon(
-                                          Icons.shopping_cart_outlined,
-                                          color: Colors.white,
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(
+                                          16.r,
+                                        ),
+                                        child: Image.asset(
+                                          item['image'],
+                                          height: 140.h,
+                                          width: 140.w,
                                         ),
                                       ),
-                                      Text(
-                                        'Add to Cart',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 12.sp,
-                                          color: Colors.white,
+                                      Positioned(
+                                        top: 8,
+                                        right: 12,
+                                        child: GestureDetector(
+                                          onTap: () {
+                                            setState(() {
+                                              products[index]['favorite'] =
+                                                  !products[index]['favorite'];
+                                            });
+                                          },
+                                          child: CircleAvatar(
+                                            radius: 16.r,
+                                            backgroundColor: Colors.white,
+                                            child: Icon(
+                                              products[index]['favorite']
+                                                  ? Icons.favorite_border
+                                                  : Icons.favorite,
+                                              size: 18.sp,
+                                              color:
+                                                  products[index]['favorite']
+                                                      ? Colors.grey
+                                                      : Color(0xffA73927),
+                                            ),
+                                          ),
                                         ),
                                       ),
                                     ],
                                   ),
-                                ),
-                              ],
+                                  SizedBox(height: 10.h),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.star,
+                                        color: Color(0xffA73927),
+                                        size: 16.sp,
+                                      ),
+                                      SizedBox(width: 4.w),
+                                      Text(
+                                        item['rating'],
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 12.sp,
+                                          color: Color(0xff57423D),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  SizedBox(height: 8.h),
+                                  Text(
+                                    item['name'],
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w400,
+                                      fontSize: 16.sp,
+                                      color: Color(0xff1B1C1C),
+                                    ),
+                                  ),
+                                  SizedBox(height: 5.h),
+                                  Text(
+                                    item['price'],
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w400,
+                                      fontSize: 18.sp,
+                                      color: Color(0xffA73927),
+                                    ),
+                                  ),
+                                  OutlinedButton(
+                                    style: OutlinedButton.styleFrom(
+                                      backgroundColor: Color(0xffA73927),
+                                      side: BorderSide(
+                                        color: Color(0xffA73927),
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(
+                                          16.r,
+                                        ),
+                                      ),
+                                    ),
+                                    onPressed: () {},
+                                    child: Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.center,
+                                      children: [
+                                        Padding(
+                                          padding: EdgeInsets.all(15.0),
+                                          child: Icon(
+                                            Icons.shopping_cart_outlined,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                        Text(
+                                          'Add to Cart',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 12.sp,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           );
                         },
@@ -355,6 +368,75 @@ class _DogEssentialsState extends State<DogEssentials> {
                   },
                 ),
               ),
+              SizedBox(height: 30.h),
+              Center(
+                child: Text(
+                  'Showing 6 of 24 items',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w400,
+                    fontSize: 12.sp,
+                    color: Color(0xff57423D),
+                  ),
+                ),
+              ),
+              SizedBox(height: 20.h),
+              Center(
+                child: SizedBox(
+                  width: 150.w,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          height: 4.h,
+                          width: 150.w,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.only(
+                              topLeft: Radius.circular(20.r),
+                              bottomLeft: Radius.circular(20.r),
+                            ),
+                            color: Color(0xffA73927),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Container(
+                          height: 4.h,
+                          width: 150.w,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.only(
+                              topRight: Radius.circular(20.r),
+                              bottomRight: Radius.circular(20.r),
+                            ),
+                            color: Color(0xffE4E2E1),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              SizedBox(height: 20.h),
+              Center(
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: Size(190.w, 55.h),
+                    side: BorderSide(color: Color(0xffA73927)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18.r),
+                    ),
+                  ),
+                  onPressed: () {},
+                  child: Text(
+                    'Load More Essentials',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12.sp,
+                      color: Color(0xffA73927),
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(height: 30.h),
             ],
           ),
         ),
