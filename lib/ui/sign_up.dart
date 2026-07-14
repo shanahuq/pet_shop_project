@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:pet_shop_project/ui/sign_in.dart';
 
 class SignUp extends StatefulWidget {
   const SignUp({super.key});
@@ -14,7 +15,9 @@ class _SignUpState extends State<SignUp> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leading: Icon(Icons.arrow_back, color: Colors.black),
+        leading: GestureDetector(
+          onTap: () => Navigator.pop(context),
+          child: Icon(Icons.arrow_back, color: Colors.black)),
         title: Center(
           child: Text(
             'PetLife',
@@ -223,7 +226,9 @@ class _SignUpState extends State<SignUp> {
                     style: TextStyle(fontSize: 12.sp, color: Color(0xff1B1C1C)),
                   ),
                   TextButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      Navigator.push(context, MaterialPageRoute(builder: (context) => SignIn(),));
+                    },
                     child: Text(
                       'Sign in',
                       style: TextStyle(

@@ -3,10 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class SearchCategories extends StatefulWidget {
   final String title;
-  const SearchCategories ({
-    super.key,
-    required this.title
-  });
+  const SearchCategories({super.key, required this.title});
 
   @override
   State<SearchCategories> createState() => _SearchCategoriesState();
@@ -118,7 +115,7 @@ class _SearchCategoriesState extends State<SearchCategories> {
                     ),
                   ),
                   Text(
-widget.title,
+                    widget.title,
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 12.sp,

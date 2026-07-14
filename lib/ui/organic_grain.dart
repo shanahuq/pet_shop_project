@@ -15,7 +15,9 @@ class _OrganicGrainState extends State<OrganicGrain> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leading: Icon(Icons.arrow_back, color: Color(0xff57423D)),
+        leading: GestureDetector(
+          onTap: () => Navigator.pop(context),
+          child: Icon(Icons.arrow_back, color: Color(0xff57423D))),
         title: Center(
           child: Text(
             'PetLife',
@@ -252,15 +254,208 @@ class _OrganicGrainState extends State<OrganicGrain> {
                         color: Color(0xff57423D),
                       ),
                     ),
-                    SizedBox(height: 20.h,),
-                    OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        shape:RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r),
-                        ) ,
+                    SizedBox(height: 20.h),
+                    Container(
+                      height: 70.h,
+                      width: 350.w,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(18.r),
+                        color: Colors.white,
+                        border: Border.all(
+                          color: const Color.fromARGB(100, 158, 158, 158),
+                        ),
                       ),
-                      onPressed: () {}, 
-                      child: child
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Padding(
+                            padding: EdgeInsets.only(left: 20.w),
+                            child: Text(
+                              'Ingredients',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 20.sp,
+                                color: Color(0xff1B1C1C),
+                              ),
+                            ),
+                          ),
+                          Padding(
+                            padding: EdgeInsets.only(right: 20.w),
+                            child: Icon(
+                              Icons.keyboard_arrow_down_sharp,
+                              color: Color(0xff1B1C1C),
+                              size: 28.sp,
+                            ),
+                          ),
+                        ],
                       ),
+                    ),
+                    SizedBox(height: 10.h),
+                    Container(
+                      height: 70.h,
+                      width: 350.w,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(18.r),
+                        color: Colors.white,
+                        border: Border.all(
+                          color: const Color.fromARGB(100, 158, 158, 158),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Padding(
+                            padding: EdgeInsets.only(left: 20.w),
+                            child: Text(
+                              'Feeding Guide',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 20.sp,
+                                color: Color(0xff1B1C1C),
+                              ),
+                            ),
+                          ),
+                          Padding(
+                            padding: EdgeInsets.only(right: 20.w),
+                            child: Icon(
+                              Icons.keyboard_arrow_down_sharp,
+                              color: Color(0xff1B1C1C),
+                              size: 28.sp,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: 25.h),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          children: [
+                            Text(
+                              'Customer Reviews',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 20.sp,
+                                color: Color(0xff1B1C1C),
+                              ),
+                            ),
+                            Text(
+                              'Based on 124 verified purchases',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w400,
+                                fontSize: 12.sp,
+                                color: Color(0xff57423D),
+                              ),
+                            ),
+                          ],
+                        ),
+                        TextButton(
+                          onPressed: () {},
+                          child: Text(
+                            'View All',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w400,
+                              fontSize: 16.sp,
+                              color: Color(0xffA73927),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 36.h),
+                    ReviewCard(
+                      initials: 'JD',
+                      name: 'Jane Doe',
+                      time: '2d ago',
+                      review:
+                          '"My golden retriever has such a shiny coat now! She used to be a picky eater but she finishes every bowl of this."',
+                    ),
+                    SizedBox(height: 15.h),
+                    ReviewCard(
+                      initials: 'MS',
+                      name: 'Mark Smith',
+                      time: '1w ago',
+                      review:
+                          '"Great quality ingredients. I appreciate the clear feding guide. Fast shipping too."',
+                    ),
+                    SizedBox(height: 30.h),
+                    Row(
+                      children: [
+                        SizedBox(
+                          width: 170.w,
+                          height: 85.h,
+                          child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              side: BorderSide(color: Color(0xff006971)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(18.r),
+                              ),
+                            ),
+                            onPressed: () {},
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.autorenew,
+                                  color: Color(0xff006971),
+                                  size: 26.sp,
+                                ),
+                                SizedBox(width: 6.w),
+                                Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Subscribe',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w400,
+                                        fontSize: 16.sp,
+                                        color: Color(0xff006971),
+                                      ),
+                                    ),
+                                    Text(
+                                      '& Save 15%',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w400,
+                                        fontSize: 16.sp,
+                                        color: Color(0xff006971),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 10.w),
+                        SizedBox(
+                          width: 165.w,
+                          height: 85.h,
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Color(0xffA73927),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(18.r),
+                              ),
+                            ),
+                            onPressed: () {},
+                            icon: Icon(
+                              Icons.shopping_cart_outlined,
+                              color: Colors.white,size: 22.sp,
+                            ),
+                            label: Text(
+                              'Add to Cart',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w400,
+                                fontSize: 16.sp,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -298,6 +493,90 @@ class _OrganicGrainState extends State<OrganicGrain> {
               color: selected ? Color(0xffA73927) : Color(0xff57423D),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget ReviewCard({
+    required String initials,
+    required String name,
+    required String time,
+    required String review,
+  }) {
+    return Container(
+      height: 160.h,
+      width: 350.w,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16.r),
+        color: Colors.white,
+        border: Border.all(color: const Color.fromARGB(97, 158, 158, 158)),
+      ),
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 20.w),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(height: 10.h),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                CircleAvatar(
+                  radius: 25.r,
+                  backgroundColor: Color(0xffFFDAD4),
+                  child: Text(
+                    initials,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16.sp,
+                      color: Color(0xff3F0300),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.only(right: 50.w),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12.sp,
+                          color: Color(0xff1B1C1C),
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          ...List.generate(
+                            5,
+                            (index) => Icon(Icons.star, color: Colors.amber),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  time,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w400,
+                    fontSize: 12.sp,
+                    color: Color(0xff57423D),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 10.h),
+            Text(
+              review,
+              style: TextStyle(
+                fontWeight: FontWeight.w400,
+                fontSize: 14.sp,
+                color: Color(0xff57423D),
+              ),
+            ),
+          ],
         ),
       ),
     );

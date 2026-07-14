@@ -16,7 +16,9 @@ class _CheckoutState extends State<Checkout> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leading: Icon(Icons.arrow_back),
+        leading: GestureDetector(
+          onTap: () => Navigator.pop(context),
+          child: Icon(Icons.arrow_back)),
         title: Text('Checkout', style: TextStyle(fontSize: 14.sp)),
         actions: [
           Padding(

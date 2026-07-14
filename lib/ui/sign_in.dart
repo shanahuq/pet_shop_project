@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:pet_shop_project/ui/bottom_navigation_button.dart';
+import 'package:pet_shop_project/ui/home_page.dart';
+import 'package:pet_shop_project/ui/sign_up.dart';
 
 class SignIn extends StatefulWidget {
   const SignIn({super.key});
@@ -122,7 +125,14 @@ class _SignInState extends State<SignIn> {
                     borderRadius: BorderRadius.circular(18.r),
                   ),
                 ),
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => BottomNavigationButton(),
+                    ),
+                  );
+                },
                 child: Padding(
                   padding: EdgeInsets.symmetric(
                     horizontal: 100.w,
@@ -153,7 +163,8 @@ class _SignInState extends State<SignIn> {
                 ],
               ),
               SizedBox(height: 30.h),
-              SingleChildScrollView(scrollDirection: Axis.horizontal,
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -205,14 +216,20 @@ class _SignInState extends State<SignIn> {
                 ),
               ),
               SizedBox(height: 40.h),
-              Row(mainAxisAlignment: MainAxisAlignment.center,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
                     'Dont have an account?',
                     style: TextStyle(fontSize: 14.sp, color: Color(0xff8B716C)),
                   ),
                   TextButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => SignUp()),
+                      );
+                    },
                     child: Text(
                       "Sign Up",
                       style: TextStyle(

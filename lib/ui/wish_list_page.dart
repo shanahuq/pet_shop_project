@@ -1,17 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:pet_shop_project/ui/checkout.dart';
+import 'package:pet_shop_project/ui/organic_grain.dart';
 import 'home_page.dart';
 
 class WishListPage extends StatefulWidget {
   const WishListPage({super.key});
 
   @override
-  State<WishListPage> createState() => _CartPageState();
+  State<WishListPage> createState() => _WishListPageState();
 }
 
-class _CartPageState extends State<WishListPage> {
+class _WishListPageState extends State<WishListPage> {
   int selectedIndex = 2;
+  final List<Map<String, dynamic>> CartItems = [
+    {
+      'image': 'assets/dogsfood.png',
+      'name': 'Organic Salmon Kibble',
+      'subtitle': '2.5kg • Sensitive Digestion',
+      'price': '\$42.00',
+    },
+    {
+      'image': 'assets/dogscoir.png',
+      'name': 'Hemp Braided Tug',
+      'subtitle': 'Eco-friendly • Large',
+      'price': '\$18.50',
+    },
+  ];
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
@@ -117,7 +132,11 @@ class _CartPageState extends State<WishListPage> {
 
               SizedBox(height: 20.h),
 
-              Expanded(child: TabBarView(children: [CartTab(), WishListTab()])),
+              Expanded(
+                child: TabBarView(
+                  children: [CartTab(cartItems: CartItems), WishListTab()],
+                ),
+              ),
             ],
           ),
         ),
@@ -127,7 +146,11 @@ class _CartPageState extends State<WishListPage> {
 }
 
 class CartTab extends StatelessWidget {
-  const CartTab({super.key});
+  final List<Map<String,dynamic>> CartItems;
+  const CartTab({
+    super.key,
+    required this.CartItems
+    });
 
   @override
   Widget build(BuildContext context) {
@@ -135,19 +158,28 @@ class CartTab extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: 30.w),
       child: Column(
         children: [
-          CartItem(
-            image: 'assets/dogsfood.png',
-            name: 'Organic Salmon Kibble',
-            subtitle: '2.5kg • Sensitive Digestion',
-            price: '\$42.00',
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => OrganicGrain()),
+              );
+            },
+            child: ListView.builder(
+              itemCount: cartItems.length,
+              itemBuilder: (context, index) {
+                final item = cartItems[index];
+                return CartItem(
+                  image: item['image'],
+                  name: item['name'],
+                  subtitle: item['subtitle'],
+                  price: item['price'],
+                );
+              },
+            ),
           ),
           SizedBox(height: 15.h),
-          CartItem(
-            image: 'assets/dogscoir.png',
-            name: 'Hemp Braided Tug',
-            subtitle: 'Eco-friendly • Large',
-            price: '\$18.50',
-          ),
+
           SizedBox(height: 15.h),
           Divider(),
           SizedBox(height: 10.h),
