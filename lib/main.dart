@@ -8,8 +8,17 @@ import 'package:pet_shop_project/ui/product_details.dart';
 import 'package:pet_shop_project/ui/sign_in.dart';
 import 'package:pet_shop_project/ui/sign_up.dart';
 import 'package:pet_shop_project/ui/splash_screen.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:pet_shop_project/firebase_options.dart';
 
-void main() {
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
   runApp(const MyApp());
 }
 

@@ -134,7 +134,7 @@ class _WishListPageState extends State<WishListPage> {
 
               Expanded(
                 child: TabBarView(
-                  children: [CartTab(cartItems: CartItems), WishListTab()],
+                  children: [CartTab(CartItems: CartItems), WishListTab()],
                 ),
               ),
             ],
@@ -166,9 +166,9 @@ class CartTab extends StatelessWidget {
               );
             },
             child: ListView.builder(
-              itemCount: cartItems.length,
+              itemCount: CartItems.length,
               itemBuilder: (context, index) {
-                final item = cartItems[index];
+                final item = CartItems[index];
                 return CartItem(
                   image: item['image'],
                   name: item['name'],

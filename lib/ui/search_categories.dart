@@ -132,44 +132,49 @@ class _SearchCategoriesState extends State<SearchCategories> {
                   color: Color(0xff1B1C1C),
                 ),
               ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '24 premium items for your best friend',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w400,
-                      fontSize: 14.sp,
-                      color: Color(0xff57423D),
-                    ),
-                  ),
-                  OutlinedButton(
-                    onPressed: () {},
-                    style: OutlinedButton.styleFrom(
-                      backgroundColor: Color(0xffF0EDED),
-                      side: BorderSide(color: Color(0xffDFC0BA)),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16.r),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16.w),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '24 premium items for your best friend',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w400,
+                          fontSize: 14.sp,
+                          color: const Color(0xff57423D),
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.tune, color: Colors.black, size: 22.sp),
-                        Padding(
-                          padding: EdgeInsets.all(8.0),
-                          child: Text(
-                            'Filter',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 12.sp,
-                              color: Colors.black,
-                            ),
-                          ),
+
+                    SizedBox(width: 8.w),
+
+                    OutlinedButton.icon(
+                      onPressed: () {},
+                      icon: Icon(Icons.tune, color: Colors.black, size: 18.sp),
+                      label: Text(
+                        'Filter',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12.sp,
+                          color: Colors.black,
                         ),
-                      ],
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: const Color(0xffF0EDED),
+                        side: const BorderSide(color: Color(0xffDFC0BA)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16.r),
+                        ),
+                        padding: EdgeInsets.symmetric(horizontal: 8.w),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               SizedBox(height: 10.h),
               SizedBox(
@@ -226,7 +231,7 @@ class _SearchCategoriesState extends State<SearchCategories> {
                           crossAxisCount: 2,
                           crossAxisSpacing: 15.w,
                           mainAxisSpacing: 15.h,
-                          childAspectRatio: 0.62,
+                          childAspectRatio: 0.55,
                         ),
 
                         itemBuilder: (context, index) {
@@ -237,92 +242,93 @@ class _SearchCategoriesState extends State<SearchCategories> {
                               color: Colors.white,
                               border: Border.all(color: Color(0xffFFFFFF)),
                             ),
-                            child: SingleChildScrollView(
-                              scrollDirection: Axis.vertical,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Stack(
-                                    children: [
-                                      ClipRRect(
-                                        borderRadius: BorderRadius.circular(
-                                          16.r,
-                                        ),
-                                        child: Image.asset(
-                                          item['image'],
-                                          height: 140.h,
-                                          width: 140.w,
-                                        ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Stack(
+                                  children: [
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(16.r),
+                                      child: Image.asset(
+                                        item['image'],
+                                        height: 140.h,
+                                        width: 140.w,
                                       ),
-                                      Positioned(
-                                        top: 8,
-                                        right: 12,
-                                        child: GestureDetector(
-                                          onTap: () {
-                                            setState(() {
-                                              products[index]['favorite'] =
-                                                  !products[index]['favorite'];
-                                            });
-                                          },
-                                          child: CircleAvatar(
-                                            radius: 16.r,
-                                            backgroundColor: Colors.white,
-                                            child: Icon(
-                                              products[index]['favorite']
-                                                  ? Icons.favorite_border
-                                                  : Icons.favorite,
-                                              size: 18.sp,
-                                              color:
-                                                  products[index]['favorite']
-                                                      ? Colors.grey
-                                                      : Color(0xffA73927),
-                                            ),
+                                    ),
+                                    Positioned(
+                                      top: 8,
+                                      right: 12,
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          setState(() {
+                                            products[index]['favorite'] =
+                                                !products[index]['favorite'];
+                                          });
+                                        },
+                                        child: CircleAvatar(
+                                          radius: 16.r,
+                                          backgroundColor: Colors.white,
+                                          child: Icon(
+                                            products[index]['favorite']
+                                                ? Icons.favorite_border
+                                                : Icons.favorite,
+                                            size: 18.sp,
+                                            color:
+                                                products[index]['favorite']
+                                                    ? Colors.grey
+                                                    : Color(0xffA73927),
                                           ),
                                         ),
                                       ),
-                                    ],
-                                  ),
-                                  SizedBox(height: 10.h),
-                                  Row(
-                                    children: [
-                                      Icon(
-                                        Icons.star,
-                                        color: Color(0xffA73927),
-                                        size: 16.sp,
-                                      ),
-                                      SizedBox(width: 4.w),
-                                      Text(
-                                        item['rating'],
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 12.sp,
-                                          color: Color(0xff57423D),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  SizedBox(height: 8.h),
-                                  Text(
-                                    item['name'],
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w400,
-                                      fontSize: 16.sp,
-                                      color: Color(0xff1B1C1C),
                                     ),
-                                  ),
-                                  SizedBox(height: 5.h),
-                                  Text(
-                                    item['price'],
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w400,
-                                      fontSize: 18.sp,
+                                  ],
+                                ),
+                                SizedBox(height: 10.h),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.star,
                                       color: Color(0xffA73927),
+                                      size: 16.sp,
                                     ),
+                                    SizedBox(width: 4.w),
+                                    Text(
+                                      item['rating'],
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 12.sp,
+                                        color: Color(0xff57423D),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: 8.h),
+                                Text(
+                                  item['name'],
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w400,
+                                    fontSize: 16.sp,
+                                    color: Color(0xff1B1C1C),
                                   ),
-                                  OutlinedButton(
+                                ),
+                                SizedBox(height: 5.h),
+                                Text(
+                                  item['price'],
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w400,
+                                    fontSize: 18.sp,
+                                    color: Color(0xffA73927),
+                                  ),
+                                ),
+                                SizedBox(
+                                  width: double.infinity,
+                                  height: 50.h,
+                                  child: OutlinedButton(
                                     style: OutlinedButton.styleFrom(
-                                      backgroundColor: Color(0xffA73927),
-                                      side: BorderSide(
+                                      backgroundColor: const Color(
+                                        0xffA73927,
+                                      ),
+                                      side: const BorderSide(
                                         color: Color(0xffA73927),
                                       ),
                                       shape: RoundedRectangleBorder(
@@ -330,19 +336,19 @@ class _SearchCategoriesState extends State<SearchCategories> {
                                           16.r,
                                         ),
                                       ),
+                                      padding: EdgeInsets.zero,
                                     ),
                                     onPressed: () {},
                                     child: Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.center,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       children: [
-                                        Padding(
-                                          padding: EdgeInsets.all(15.0),
-                                          child: Icon(
-                                            Icons.shopping_cart_outlined,
-                                            color: Colors.white,
-                                          ),
+                                        Icon(
+                                          Icons.shopping_cart_outlined,
+                                          color: Colors.white,
+                                          size: 20.sp,
                                         ),
+                                        SizedBox(width: 8.w),
                                         Text(
                                           'Add to Cart',
                                           style: TextStyle(
@@ -354,8 +360,8 @@ class _SearchCategoriesState extends State<SearchCategories> {
                                       ],
                                     ),
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
                           );
                         },

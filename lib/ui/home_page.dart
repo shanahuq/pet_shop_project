@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:pet_shop_project/ui/organic_grain.dart';
 import 'package:pet_shop_project/ui/search_page.dart';
 import 'wish_list_page.dart';
 
@@ -231,7 +232,7 @@ class _HomePageState extends State<HomePage> {
                                     crossAxisCount: 2,
                                     crossAxisSpacing: 15,
                                     mainAxisSpacing: 15.h,
-                                    childAspectRatio: 0.62,
+                                    childAspectRatio: 0.58,
                                   ),
                               itemBuilder: (context, index) {
                                 final product = dogProducts[index];
@@ -256,9 +257,23 @@ class _HomePageState extends State<HomePage> {
                                             child: ClipRRect(
                                               borderRadius:
                                                   BorderRadius.circular(15.r),
-                                              child: Image.asset(
-                                                product["image"]!,
-                                                fit: BoxFit.cover,
+                                              child: GestureDetector(
+                                                onTap: () {
+                                                  if (index == 0) {
+                                                    Navigator.push(
+                                                      context,
+                                                      MaterialPageRoute(
+                                                        builder:
+                                                            (context) =>
+                                                                OrganicGrain(),
+                                                      ),
+                                                    );
+                                                  }
+                                                },
+                                                child: Image.asset(
+                                                  product["image"]!,
+                                                  fit: BoxFit.cover,
+                                                ),
                                               ),
                                             ),
                                           ),
