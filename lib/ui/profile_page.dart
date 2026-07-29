@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -9,8 +11,66 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  Map<String, dynamic>? userData;
+  bool isLoading = true;
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    final user = _auth.currentUser;
+
+    if (user == null) {
+      setState(() {
+        isLoading = false;
+      });
+      return;
+    }
+
+    try {
+    final userDoc = await _firestore
+    .collection('users')
+    .doc(user.uid)
+    .get();
+
+debugPrint('Current UID: ${user.uid}');
+debugPrint('User document exists: ${userDoc.exists}');
+debugPrint('User data: ${userDoc.data()}');
+
+      if (userDoc.exists) {
+        setState(() {
+          userData = userDoc.data();
+          isLoading = false;
+        });
+      } else {
+        setState(() {
+          isLoading = false;
+        });
+
+        debugPrint('User document does not exist');
+      }
+    } catch (e) {
+      debugPrint('Error loading user data: $e');
+
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final User? user = _auth.currentUser;
+    if (isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (user == null) {
+      return const Scaffold(body: Center(child: Text('No user is logged in')));
+    }
     return Scaffold(
       appBar: AppBar(
         leading: Padding(
@@ -85,7 +145,8 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 SizedBox(height: 20.h),
                 Text(
-                  'Sarah Jenkins',
+                  userData?['name'] ?? 'No name',
+
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 24.sp,
@@ -93,7 +154,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                 ),
                 Text(
-                  'San Francisco, CA',
+                  userData?['address'] ?? 'No address',
                   style: TextStyle(
                     fontWeight: FontWeight.w400,
                     fontSize: 14.sp,
@@ -312,7 +373,10 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                   onPressed: () {},
                   child: Padding(
-                    padding:  EdgeInsets.symmetric(horizontal: 100.w,vertical: 10.h),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 100.w,
+                      vertical: 10.h,
+                    ),
                     child: Text(
                       'Log Out',
                       style: TextStyle(
@@ -323,7 +387,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                   ),
                 ),
-                SizedBox(height: 30.h,)
+                SizedBox(height: 30.h),
               ],
             ),
           ),

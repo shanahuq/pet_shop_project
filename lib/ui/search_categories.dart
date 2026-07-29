@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:pet_shop_project/ui/home_page.dart';
 
 class SearchCategories extends StatefulWidget {
   final String title;
@@ -61,20 +62,21 @@ class _SearchCategoriesState extends State<SearchCategories> {
     return Scaffold(
       appBar: AppBar(
         leadingWidth: 60.w,
-        leading: CircleAvatar(
-          radius: 20.r,
-          child: ClipOval(
-            child: Image.asset('assets/dogs_essential.png', fit: BoxFit.cover),
-          ),
-        ),
-        title: Padding(
-          padding: EdgeInsets.only(left: 30.w),
-          child: Text(
-            'PetLife',
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-              fontSize: 28.sp,
-              color: Color(0xffA73927),
+        leading: GestureDetector( 
+          onTap:() {
+            Navigator.pop(context);
+          },
+      child:      Icon(Icons.arrow_back_ios)),
+        title: Center(
+          child: Padding(
+            padding: EdgeInsets.only(left: 30.w),
+            child: Text(
+              'PetLife',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 28.sp,
+                color: Color(0xffA73927),
+              ),
             ),
           ),
         ),
@@ -96,34 +98,7 @@ class _SearchCategoriesState extends State<SearchCategories> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(height: 30.h),
-              Row(
-                children: [
-                  Text(
-                    'Home',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12.sp,
-                      color: Color(0xff57423D),
-                    ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.all(10.w),
-                    child: Icon(
-                      Icons.arrow_forward_ios_rounded,
-                      color: Color(0xff57423D),
-                      size: 13.sp,
-                    ),
-                  ),
-                  Text(
-                    widget.title,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12.sp,
-                      color: Color(0xffA73927),
-                    ),
-                  ),
-                ],
-              ),
+             
               Text(
                 widget.title,
                 style: TextStyle(
@@ -325,9 +300,7 @@ class _SearchCategoriesState extends State<SearchCategories> {
                                   height: 50.h,
                                   child: OutlinedButton(
                                     style: OutlinedButton.styleFrom(
-                                      backgroundColor: const Color(
-                                        0xffA73927,
-                                      ),
+                                      backgroundColor: const Color(0xffA73927),
                                       side: const BorderSide(
                                         color: Color(0xffA73927),
                                       ),
