@@ -3,6 +3,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:pet_shop_project/ui/organic_grain.dart';
 import 'package:pet_shop_project/ui/search_categories.dart';
 import 'package:pet_shop_project/ui/search_page.dart';
+import 'package:pet_shop_project/ui/view_all_categories.dart';
+import 'package:pet_shop_project/ui/view_all_products_list.dart';
 import 'wish_list_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -162,7 +164,14 @@ class _HomePageState extends State<HomePage> {
                         ),
                       ),
                       TextButton(
-                        onPressed: () {},
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ViewAllCategories(),
+                            ),
+                          );
+                        },
                         child: Text(
                           'View All',
                           style: TextStyle(
@@ -191,7 +200,7 @@ class _HomePageState extends State<HomePage> {
                               MaterialPageRoute(
                                 builder:
                                     (context) => SearchCategories(
-                                      title: data['name'] ?? '',
+                                      title: data['name'] ?? '', categoryId: 'categoryId',
                                     ),
                               ),
                             );
@@ -258,7 +267,15 @@ class _HomePageState extends State<HomePage> {
                                 ),
                               ),
                               TextButton(
-                                onPressed: () {},
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder:
+                                          (context) => ViewAllProductsList(products: dogProducts,),
+                                    ),
+                                  );
+                                },
                                 child: Text(
                                   'View All',
                                   style: TextStyle(

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class OrganicGrain extends StatefulWidget {
   const OrganicGrain({super.key});
@@ -11,13 +13,49 @@ class OrganicGrain extends StatefulWidget {
 class _OrganicGrainState extends State<OrganicGrain> {
   bool isSelected = true;
   String selectedWeight = '2kg';
+  final String productId = 'ZtZgVFduAXq0feoW8RMK';
+
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  Stream<QuerySnapshot> get reviewsStream {
+    return _firestore
+        .collection('reviews')
+        .where('productId', isEqualTo: productId)
+        .snapshots();
+  }
+
+  String formatReviewDate(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date);
+
+    if (difference.inMinutes < 60) {
+      return '${difference.inMinutes}m ago';
+    }
+
+    if (difference.inHours < 24) {
+      return '${difference.inHours}h ago';
+    }
+
+    if (difference.inDays < 7) {
+      return '${difference.inDays}d ago';
+    }
+
+    if (difference.inDays < 30) {
+      return '${(difference.inDays / 7).floor()}w ago';
+    }
+
+    return '${date.day}/${date.month}/${date.year}';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         leading: GestureDetector(
           onTap: () => Navigator.pop(context),
-          child: Icon(Icons.arrow_back, color: Color(0xff57423D))),
+          child: Icon(Icons.arrow_back, color: Color(0xff57423D)),
+        ),
         title: Center(
           child: Text(
             'PetLife',
@@ -144,7 +182,11 @@ class _OrganicGrainState extends State<OrganicGrain> {
                       children: [
                         ...List.generate(
                           5,
-                          (index) => Icon(Icons.star, color: Colors.amber),
+                          (index) => Icon(
+                            Icons.star,
+                            color: Colors.amber,
+                            size: 18.sp,
+                          ),
                         ),
                         SizedBox(width: 10.w),
                         Text(
@@ -364,20 +406,67 @@ class _OrganicGrainState extends State<OrganicGrain> {
                       ],
                     ),
                     SizedBox(height: 36.h),
-                    ReviewCard(
-                      initials: 'JD',
-                      name: 'Jane Doe',
-                      time: '2d ago',
-                      review:
-                          '"My golden retriever has such a shiny coat now! She used to be a picky eater but she finishes every bowl of this."',
-                    ),
-                    SizedBox(height: 15.h),
-                    ReviewCard(
-                      initials: 'MS',
-                      name: 'Mark Smith',
-                      time: '1w ago',
-                      review:
-                          '"Great quality ingredients. I appreciate the clear feding guide. Fast shipping too."',
+                    StreamBuilder<QuerySnapshot>(
+                      stream: reviewsStream,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        }
+
+                        if (snapshot.hasError) {
+                          debugPrint('🔥 FIRESTORE ERROR: ${snapshot.error}');
+
+                          return Padding(
+                            padding: EdgeInsets.all(20.w),
+                            child: Text(
+                              'Error loading reviews:\n\n${snapshot.error}',
+                              style: TextStyle(
+                                color: Colors.red,
+                                fontSize: 14.sp,
+                              ),
+                            ),
+                          );
+                        }
+
+                        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                          return const Center(child: Text('No reviews yet.'));
+                        }
+
+                        final reviews = snapshot.data!.docs;
+
+                        return Column(
+                          children:
+                              reviews.map((doc) {
+                                final data = doc.data() as Map<String, dynamic>;
+
+                                final String comment = data['comment'] ?? '';
+
+                                final double rating =
+                                    (data['rating'] ?? 0).toDouble();
+
+                                final Timestamp? timestamp = data['createdAt'];
+
+                                final String time =
+                                    timestamp != null
+                                        ? formatReviewDate(timestamp.toDate())
+                                        : '';
+
+                                return Padding(
+                                  padding: EdgeInsets.only(bottom: 15.h),
+                                  child: ReviewCard(
+                                    initials: 'U',
+                                    name: 'Customer',
+                                    time: time,
+                                    rating: rating,
+                                    review: comment,
+                                  ),
+                                );
+                              }).toList(),
+                        );
+                      },
                     ),
                     SizedBox(height: 30.h),
                     Row(
@@ -442,7 +531,8 @@ class _OrganicGrainState extends State<OrganicGrain> {
                             onPressed: () {},
                             icon: Icon(
                               Icons.shopping_cart_outlined,
-                              color: Colors.white,size: 22.sp,
+                              color: Colors.white,
+                              size: 22.sp,
                             ),
                             label: Text(
                               'Add to Cart',
@@ -502,10 +592,10 @@ class _OrganicGrainState extends State<OrganicGrain> {
     required String initials,
     required String name,
     required String time,
+    required double rating,
     required String review,
   }) {
     return Container(
-      height: 160.h,
       width: 350.w,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16.r),
@@ -518,23 +608,25 @@ class _OrganicGrainState extends State<OrganicGrain> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(height: 10.h),
+
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 CircleAvatar(
                   radius: 25.r,
-                  backgroundColor: Color(0xffFFDAD4),
+                  backgroundColor: const Color(0xffFFDAD4),
                   child: Text(
                     initials,
                     style: TextStyle(
                       fontWeight: FontWeight.w700,
                       fontSize: 16.sp,
-                      color: Color(0xff3F0300),
+                      color: const Color(0xff3F0300),
                     ),
                   ),
                 ),
+
                 Padding(
-                  padding: EdgeInsets.only(right: 50.w),
+                  padding: EdgeInsets.only(right: 20.w),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -543,39 +635,49 @@ class _OrganicGrainState extends State<OrganicGrain> {
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 12.sp,
-                          color: Color(0xff1B1C1C),
+                          color: const Color(0xff1B1C1C),
                         ),
                       ),
+
                       Row(
-                        children: [
-                          ...List.generate(
-                            5,
-                            (index) => Icon(Icons.star, color: Colors.amber),
+                        children: List.generate(
+                          5,
+                          (index) => Icon(
+                            index < rating.round()
+                                ? Icons.star
+                                : Icons.star_border,
+                            color: Colors.amber,
+                            size: 18.sp,
                           ),
-                        ],
+                        ),
                       ),
                     ],
                   ),
                 ),
+
                 Text(
                   time,
                   style: TextStyle(
                     fontWeight: FontWeight.w400,
                     fontSize: 12.sp,
-                    color: Color(0xff57423D),
+                    color: const Color(0xff57423D),
                   ),
                 ),
               ],
             ),
+
             SizedBox(height: 10.h),
+
             Text(
               review,
               style: TextStyle(
                 fontWeight: FontWeight.w400,
                 fontSize: 14.sp,
-                color: Color(0xff57423D),
+                color: const Color(0xff57423D),
               ),
             ),
+
+            SizedBox(height: 15.h),
           ],
         ),
       ),

@@ -195,7 +195,7 @@ class _SearchPageState extends State<SearchPage> {
                                 MaterialPageRoute(
                                   builder:
                                       (context) => SearchCategories(
-                                        title: "${item['name']} Essentials",
+                                        title: "${item['name']} Essentials", categoryId: 'categoryId',
                                       ),
                                 ),
                               );

@@ -4,7 +4,8 @@ import 'package:pet_shop_project/ui/home_page.dart';
 
 class SearchCategories extends StatefulWidget {
   final String title;
-  const SearchCategories({super.key, required this.title});
+  final String categoryId;
+  const SearchCategories({super.key, required this.title,required this.categoryId});
 
   @override
   State<SearchCategories> createState() => _SearchCategoriesState();
