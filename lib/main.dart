@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:pet_shop_project/ui/auth_gate.dart';
 import 'package:pet_shop_project/ui/bottom_navigation_button.dart';
 import 'package:pet_shop_project/ui/checkout.dart';
 import 'package:pet_shop_project/ui/home_page.dart';
@@ -38,7 +39,7 @@ class MyApp extends StatelessWidget {
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         ),
-        home: const SignIn (),
+        home: const AuthGate (),
       ),
     );
   }

@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:pet_shop_project/ui/organic_grain.dart';
@@ -56,6 +57,49 @@ class _HomePageState extends State<HomePage> {
       "price": "\$45.00",
     },
   ];
+  Future<void> addToCart(Map<String, String> product) async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please login first')));
+      return;
+    }
+
+    try {
+      final productId = product['name']!.toLowerCase().replaceAll(' ', '_');
+
+      await FirebaseFirestore.instance
+          .collection('carts')
+          .doc(user.uid)
+          .collection('items')
+          .doc(productId)
+          .set({
+            'productId': productId,
+            'name': product['name'],
+            'brand': product['brand'],
+            'image': product['image'],
+            'price': product['price'],
+            'quantity': 1,
+            'addedAt': FieldValue.serverTimestamp(),
+          });
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${product['name']} added to cart')),
+      );
+    } catch (e) {
+      debugPrint('FIREBASE ERROR: $e');
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to add product: $e')));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -200,7 +244,8 @@ class _HomePageState extends State<HomePage> {
                               MaterialPageRoute(
                                 builder:
                                     (context) => SearchCategories(
-                                      title: data['name'] ?? '', categoryId: 'categoryId',
+                                      title: data['name'] ?? '',
+                                      categoryId: 'categoryId',
                                     ),
                               ),
                             );
@@ -272,7 +317,9 @@ class _HomePageState extends State<HomePage> {
                                     context,
                                     MaterialPageRoute(
                                       builder:
-                                          (context) => ViewAllProductsList(products: dogProducts,),
+                                          (context) => ViewAllProductsList(
+                                            products: dogProducts,
+                                          ),
                                     ),
                                   );
                                 },
@@ -377,7 +424,11 @@ class _HomePageState extends State<HomePage> {
                                       SizedBox(
                                         width: double.infinity,
                                         child: ElevatedButton(
-                                          onPressed: () {},
+                                          onPressed: () async {
+                                            print('ADD TO CART BUTTON CLICKED');
+
+                                            await addToCart(product);
+                                          },
                                           style: ElevatedButton.styleFrom(
                                             backgroundColor: const Color(
                                               0xff006971,

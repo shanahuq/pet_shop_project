@@ -32,14 +32,11 @@ class _ProfilePageState extends State<ProfilePage> {
     }
 
     try {
-    final userDoc = await _firestore
-    .collection('users')
-    .doc(user.uid)
-    .get();
+      final userDoc = await _firestore.collection('users').doc(user.uid).get();
 
-debugPrint('Current UID: ${user.uid}');
-debugPrint('User document exists: ${userDoc.exists}');
-debugPrint('User data: ${userDoc.data()}');
+      debugPrint('Current UID: ${user.uid}');
+      debugPrint('User document exists: ${userDoc.exists}');
+      debugPrint('User data: ${userDoc.data()}');
 
       if (userDoc.exists) {
         setState(() {
@@ -371,7 +368,9 @@ debugPrint('User data: ${userDoc.data()}');
                       borderRadius: BorderRadius.circular(20.r),
                     ),
                   ),
-                  onPressed: () {},
+                  onPressed: () async {
+                    await FirebaseAuth.instance.signOut();
+                  },
                   child: Padding(
                     padding: EdgeInsets.symmetric(
                       horizontal: 100.w,

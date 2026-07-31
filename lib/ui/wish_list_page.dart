@@ -1,8 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:pet_shop_project/ui/checkout.dart';
-import 'package:pet_shop_project/ui/organic_grain.dart';
-import 'home_page.dart';
 
 class WishListPage extends StatefulWidget {
   const WishListPage({super.key});
@@ -12,23 +11,19 @@ class WishListPage extends StatefulWidget {
 }
 
 class _WishListPageState extends State<WishListPage> {
-  int selectedIndex = 2;
-  final List<Map<String, dynamic>> CartItems = [
-    {
-      'image': 'assets/dogsfood.png',
-      'name': 'Organic Salmon Kibble',
-      'subtitle': '2.5kg • Sensitive Digestion',
-      'price': '\$42.00',
-    },
-    {
-      'image': 'assets/dogscoir.png',
-      'name': 'Hemp Braided Tug',
-      'subtitle': 'Eco-friendly • Large',
-      'price': '\$18.50',
-    },
-  ];
+  int selectedIndex = 0;
+
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
   @override
   Widget build(BuildContext context) {
+    final user = _auth.currentUser;
+
+    if (user == null) {
+      return const Scaffold(body: Center(child: Text('Please login first')));
+    }
+
     return DefaultTabController(
       length: 2,
       child: Scaffold(
@@ -65,43 +60,59 @@ class _WishListPageState extends State<WishListPage> {
               padding: const EdgeInsets.all(8.0),
               child: Icon(Icons.search, size: 25.sp),
             ),
+
             Padding(
               padding: EdgeInsets.only(right: 30.w),
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Icon(
-                    Icons.shopping_cart_outlined,
-                    color: const Color(0xffA73927),
-                    size: 28.sp,
-                  ),
-                  Positioned(
-                    right: -2,
-                    top: -2,
-                    child: Container(
-                      height: 16.h,
-                      width: 16.w,
-                      decoration: BoxDecoration(
-                        color: Colors.red,
-                        borderRadius: BorderRadius.circular(20.r),
+              child: StreamBuilder<QuerySnapshot>(
+                stream:
+                    _firestore
+                        .collection('carts')
+                        .doc(user.uid)
+                        .collection('items')
+                        .snapshots(),
+                builder: (context, snapshot) {
+                  int cartCount = snapshot.data?.docs.length ?? 0;
+
+                  return Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Icon(
+                        Icons.shopping_cart_outlined,
+                        color: const Color(0xffA73927),
+                        size: 28.sp,
                       ),
-                      child: Center(
-                        child: Text(
-                          "2",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 10.sp,
-                            fontWeight: FontWeight.bold,
+
+                      if (cartCount > 0)
+                        Positioned(
+                          right: -2,
+                          top: -2,
+                          child: Container(
+                            height: 16.h,
+                            width: 16.w,
+                            decoration: BoxDecoration(
+                              color: Colors.red,
+                              borderRadius: BorderRadius.circular(20.r),
+                            ),
+                            child: Center(
+                              child: Text(
+                                cartCount.toString(),
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10.sp,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ),
-                  ),
-                ],
+                    ],
+                  );
+                },
               ),
             ),
           ],
         ),
+
         body: SafeArea(
           child: Column(
             children: [
@@ -134,7 +145,7 @@ class _WishListPageState extends State<WishListPage> {
 
               Expanded(
                 child: TabBarView(
-                  children: [CartTab(CartItems: CartItems), WishListTab()],
+                  children: [CartTab(userId: user.uid), const WishListTab()],
                 ),
               ),
             ],
@@ -146,132 +157,210 @@ class _WishListPageState extends State<WishListPage> {
 }
 
 class CartTab extends StatelessWidget {
-  final List<Map<String,dynamic>> CartItems;
-  const CartTab({
-    super.key,
-    required this.CartItems
-    });
+  final String userId;
+
+  const CartTab({super.key, required this.userId});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 30.w),
-      child: Column(
-        children: [
-          GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => OrganicGrain()),
-              );
-            },
-            child: ListView.builder(
-              itemCount: CartItems.length,
-              itemBuilder: (context, index) {
-                final item = CartItems[index];
-                return CartItem(
-                  image: item['image'],
-                  name: item['name'],
-                  subtitle: item['subtitle'],
-                  price: item['price'],
-                );
-              },
-            ),
-          ),
-          SizedBox(height: 15.h),
+    final FirebaseFirestore firestore = FirebaseFirestore.instance;
 
-          SizedBox(height: 15.h),
-          Divider(),
-          SizedBox(height: 10.h),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return StreamBuilder<QuerySnapshot>(
+      stream:
+          firestore
+              .collection('carts')
+              .doc(userId)
+              .collection('items')
+              .snapshots(),
+
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasError) {
+          return Center(
+            child: Text(
+              'Error loading cart:\n${snapshot.error}',
+              textAlign: TextAlign.center,
+            ),
+          );
+        }
+
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(
+            child: Text(
+              'Your cart is empty',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+            ),
+          );
+        }
+
+        final cartItems = snapshot.data!.docs;
+
+        double subtotal = 0;
+
+        for (final doc in cartItems) {
+          final data = doc.data() as Map<String, dynamic>;
+
+          final priceString = data['price'] ?? '\$0';
+
+          final price =
+              double.tryParse(
+                priceString.toString().replaceAll('\$', '').replaceAll(',', ''),
+              ) ??
+              0;
+
+          final quantity = data['quantity'] ?? 1;
+
+          subtotal += price * quantity;
+        }
+
+        return Padding(
+          padding: EdgeInsets.symmetric(horizontal: 30.w),
+          child: Column(
             children: [
-              Text(
-                'Subtotal',
-                style: TextStyle(
-                  fontWeight: FontWeight.w400,
-                  fontSize: 14.sp,
-                  color: Color(0xff57423D),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: cartItems.length,
+                  itemBuilder: (context, index) {
+                    final doc = cartItems[index];
+
+                    final data = doc.data() as Map<String, dynamic>;
+
+                    return CartItem(
+                      productId: doc.id,
+                      userId: userId,
+                      image: data['image'] ?? '',
+                      name: data['name'] ?? '',
+                      brand: data['brand'] ?? '',
+                      price: data['price'] ?? '\$0',
+                      quantity: data['quantity'] ?? 1,
+                    );
+                  },
                 ),
               ),
-              Text(
-                '\$60.50',
-                style: TextStyle(
-                  fontWeight: FontWeight.w400,
-                  fontSize: 14.sp,
-                  color: Color(0xff1B1C1C),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 15.h),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Shipping',
-                style: TextStyle(
-                  fontWeight: FontWeight.w400,
-                  fontSize: 16,
-                  color: Color(0xff57423D),
-                ),
-              ),
-              Text(
-                'Calculated at checkout',
-                style: TextStyle(
-                  fontWeight: FontWeight.w400,
-                  fontSize: 16.sp,
-                  color: Color(0xff006971),
-                ),
-              ),
-            ],
-          ),
-          Spacer(),
-          // SizedBox(height: 40.h),
-          SizedBox(
-            width: 300.w,
-            height: 55.h,
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => Checkout()),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Color(0xffA73927),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16.r),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+
+              const Divider(),
+
+              SizedBox(height: 10.h),
+
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Proceed to Checkout',
-                    style: TextStyle(fontSize: 16.sp, color: Colors.white),
+                    'Subtotal',
+                    style: TextStyle(
+                      fontSize: 14.sp,
+                      color: const Color(0xff57423D),
+                    ),
                   ),
-                  Padding(
-                    padding: EdgeInsets.only(left: 10.w),
-                    child: Icon(Icons.arrow_forward, color: Colors.white),
+
+                  Text(
+                    '\$${subtotal.toStringAsFixed(2)}',
+                    style: TextStyle(
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ],
               ),
-            ),
+
+              SizedBox(height: 15.h),
+
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Shipping',
+                    style: TextStyle(
+                      fontSize: 14.sp,
+                      color: const Color(0xff57423D),
+                    ),
+                  ),
+
+                  Text(
+                    'Calculated at checkout',
+                    style: TextStyle(
+                      fontSize: 14.sp,
+                      color: const Color(0xff006971),
+                    ),
+                  ),
+                ],
+              ),
+
+              SizedBox(height: 20.h),
+
+              SizedBox(
+                width: 300.w,
+                height: 55.h,
+                child: ElevatedButton(
+                  onPressed: () {},
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xffA73927),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16.r),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Proceed to Checkout',
+                        style: TextStyle(fontSize: 16.sp, color: Colors.white),
+                      ),
+
+                      SizedBox(width: 10.w),
+
+                      const Icon(Icons.arrow_forward, color: Colors.white),
+                    ],
+                  ),
+                ),
+              ),
+
+              SizedBox(height: 20.h),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
+}
 
-  Widget CartItem({
-    required String image,
-    required String name,
-    required String subtitle,
-    required String price,
-  }) {
+class CartItem extends StatelessWidget {
+  final String productId;
+  final String userId;
+  final String image;
+  final String name;
+  final String brand;
+  final String price;
+  final int quantity;
+
+  const CartItem({
+    super.key,
+    required this.productId,
+    required this.userId,
+    required this.image,
+    required this.name,
+    required this.brand,
+    required this.price,
+    required this.quantity,
+  });
+
+  Future<void> deleteItem() async {
+    await FirebaseFirestore.instance
+        .collection('carts')
+        .doc(userId)
+        .collection('items')
+        .doc(productId)
+        .delete();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Card(
       elevation: 2,
+      margin: EdgeInsets.only(bottom: 15.h),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18.r)),
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -297,13 +386,13 @@ class CartTab extends StatelessWidget {
                     name,
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
-                      fontSize: 19,
+                      fontSize: 17,
                     ),
                   ),
 
                   const SizedBox(height: 5),
 
-                  Text(subtitle, style: const TextStyle(color: Colors.grey)),
+                  Text(brand, style: const TextStyle(color: Colors.grey)),
 
                   const SizedBox(height: 8),
 
@@ -315,33 +404,53 @@ class CartTab extends StatelessWidget {
                         style: const TextStyle(
                           color: Color(0xffA73927),
                           fontWeight: FontWeight.bold,
-                          fontSize: 20,
+                          fontSize: 18,
                         ),
                       ),
 
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade200,
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                        child: const Row(
-                          children: [
-                            Icon(Icons.remove, size: 18),
-                            SizedBox(width: 8),
-                            Text("1"),
-                            SizedBox(width: 8),
-                            Icon(Icons.add, size: 18),
-                          ],
-                        ),
+                      Row(
+                        children: [
+                          IconButton(
+                            onPressed: () {},
+                            icon: const Icon(Icons.remove, size: 18),
+                          ),
+
+                          Text(
+                            quantity.toString(),
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+
+                          IconButton(
+                            onPressed: () {},
+                            icon: const Icon(Icons.add, size: 18),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ],
               ),
+            ),
+
+            IconButton(
+              onPressed: () async {
+                try {
+                  await deleteItem();
+
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Item removed from cart')),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text('Error: $e')));
+                  }
+                }
+              },
+              icon: const Icon(Icons.delete_outline, color: Colors.red),
             ),
           ],
         ),
