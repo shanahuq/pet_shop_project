@@ -356,6 +356,19 @@ class CartItem extends StatelessWidget {
         .delete();
   }
 
+  Future<void> updateQuantity(int newQuantity) async {
+    if (newQuantity < 1) {
+      return;
+    }
+
+    await FirebaseFirestore.instance
+        .collection('carts')
+        .doc(userId)
+        .collection('items')
+        .doc(productId)
+        .update({'quantity': newQuantity});
+  }
+
   @override
   Widget build(BuildContext context) {
     return Card(
@@ -363,68 +376,141 @@ class CartItem extends StatelessWidget {
       margin: EdgeInsets.only(bottom: 15.h),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18.r)),
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: EdgeInsets.all(12.w),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // PRODUCT IMAGE
             ClipRRect(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(10.r),
               child: Image.asset(
                 image,
-                width: 85,
-                height: 85,
+                width: 75.w,
+                height: 75.w,
                 fit: BoxFit.cover,
               ),
             ),
 
-            const SizedBox(width: 15),
+            SizedBox(width: 12.w),
 
+            // PRODUCT DETAILS
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // PRODUCT NAME
                   Text(
                     name,
-                    style: const TextStyle(
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
                       fontWeight: FontWeight.bold,
-                      fontSize: 17,
+                      fontSize: 15.sp,
                     ),
                   ),
 
-                  const SizedBox(height: 5),
+                  SizedBox(height: 4.h),
 
-                  Text(brand, style: const TextStyle(color: Colors.grey)),
+                  // BRAND
+                  Text(
+                    brand,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: Colors.grey, fontSize: 12.sp),
+                  ),
 
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8.h),
 
+                  // PRICE + QUANTITY
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        price,
-                        style: const TextStyle(
-                          color: Color(0xffA73927),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
+                      // PRICE
+                      Flexible(
+                        child: Text(
+                          price,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: const Color(0xffA73927),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16.sp,
+                          ),
                         ),
                       ),
 
-                      Row(
-                        children: [
-                          IconButton(
-                            onPressed: () {},
-                            icon: const Icon(Icons.remove, size: 18),
-                          ),
+                      SizedBox(width: 5.w),
 
-                          Text(
-                            quantity.toString(),
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
+                      // QUANTITY CONTROLS
+                      Container(
+                        height: 36.h,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(10.r),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // MINUS
+                            IconButton(
+                              padding: EdgeInsets.zero,
+                              constraints: BoxConstraints(
+                                minWidth: 30.w,
+                                minHeight: 30.h,
+                              ),
+                              onPressed: () async {
+                                try {
+                                  await updateQuantity(quantity - 1);
+                                } catch (e) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          'Failed to update quantity: $e',
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                              icon: Icon(Icons.remove, size: 16.sp),
+                            ),
 
-                          IconButton(
-                            onPressed: () {},
-                            icon: const Icon(Icons.add, size: 18),
-                          ),
-                        ],
+                            // QUANTITY
+                            Text(
+                              quantity.toString(),
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14.sp,
+                              ),
+                            ),
+
+                            // PLUS
+                            IconButton(
+                              padding: EdgeInsets.zero,
+                              constraints: BoxConstraints(
+                                minWidth: 30.w,
+                                minHeight: 30.h,
+                              ),
+                              onPressed: () async {
+                                try {
+                                  await updateQuantity(quantity + 1);
+                                } catch (e) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          'Failed to update quantity: $e',
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                }
+                              },
+                              icon: Icon(Icons.add, size: 16.sp),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -432,25 +518,34 @@ class CartItem extends StatelessWidget {
               ),
             ),
 
-            IconButton(
-              onPressed: () async {
-                try {
-                  await deleteItem();
+            // DELETE BUTTON
+            SizedBox(
+              width: 35.w,
+              child: IconButton(
+                padding: EdgeInsets.zero,
+                onPressed: () async {
+                  try {
+                    await deleteItem();
 
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Item removed from cart')),
-                    );
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Item removed from cart')),
+                      );
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(
+                        context,
+                      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+                    }
                   }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(SnackBar(content: Text('Error: $e')));
-                  }
-                }
-              },
-              icon: const Icon(Icons.delete_outline, color: Colors.red),
+                },
+                icon: Icon(
+                  Icons.delete_outline,
+                  color: Colors.red,
+                  size: 22.sp,
+                ),
+              ),
             ),
           ],
         ),
@@ -464,6 +559,213 @@ class WishListTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(child: Text("Wishlist Items Here"));
+    final user = FirebaseAuth.instance.currentUser;
+
+    // User is not logged in
+    if (user == null) {
+      return const Center(
+        child: Text('Please login first'),
+      );
+    }
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('Wishlist')
+          .doc(user.uid)
+          .collection('items')
+          .orderBy('addedAt', descending: true)
+          .snapshots(),
+
+      builder: (context, snapshot) {
+        // Loading
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(),
+          );
+        }
+
+        // Error
+        if (snapshot.hasError) {
+          return Center(
+            child: Text(
+              'Error loading wishlist:\n${snapshot.error}',
+              textAlign: TextAlign.center,
+            ),
+          );
+        }
+
+        // Empty wishlist
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(
+            child: Text(
+              'Your wishlist is empty',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          );
+        }
+
+        // Wishlist products
+        final wishlistItems = snapshot.data!.docs;
+
+        return ListView.builder(
+          padding: EdgeInsets.symmetric(
+            horizontal: 20.w,
+            vertical: 10.h,
+          ),
+          itemCount: wishlistItems.length,
+          itemBuilder: (context, index) {
+            final doc = wishlistItems[index];
+
+            final data = doc.data() as Map<String, dynamic>;
+
+            return WishlistItem(
+              productId: doc.id,
+              userId: user.uid,
+              image: data['image'] ?? '',
+              name: data['name'] ?? '',
+              brand: data['brand'] ?? '',
+              price: data['price'] ?? '\$0',
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+
+class WishlistItem extends StatelessWidget {
+  final String productId;
+  final String userId;
+  final String image;
+  final String name;
+  final String brand;
+  final String price;
+
+  const WishlistItem({
+    super.key,
+    required this.productId,
+    required this.userId,
+    required this.image,
+    required this.name,
+    required this.brand,
+    required this.price,
+  });
+
+  Future<void> removeFromWishlist() async {
+    await FirebaseFirestore.instance
+        .collection('Wishlist')
+        .doc(userId)
+        .collection('items')
+        .doc(productId)
+        .delete();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 2,
+      margin: EdgeInsets.only(bottom: 15.h),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18.r),
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(12.w),
+        child: Row(
+          children: [
+            // PRODUCT IMAGE
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12.r),
+              child: Image.asset(
+                image,
+                width: 85.w,
+                height: 85.h,
+                fit: BoxFit.cover,
+              ),
+            ),
+
+            SizedBox(width: 15.w),
+
+            // PRODUCT DETAILS
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16.sp,
+                    ),
+                  ),
+
+                  SizedBox(height: 5.h),
+
+                  Text(
+                    brand,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 13.sp,
+                    ),
+                  ),
+
+                  SizedBox(height: 8.h),
+
+                  Text(
+                    price,
+                    style: TextStyle(
+                      color: const Color(0xffA73927),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16.sp,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // REMOVE FROM WISHLIST
+            IconButton(
+              onPressed: () async {
+                try {
+                  await removeFromWishlist();
+
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Removed from wishlist',
+                        ),
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Error: $e',
+                        ),
+                      ),
+                    );
+                  }
+                }
+              },
+              icon: Icon(
+                Icons.favorite,
+                color: Colors.red,
+                size: 25.sp,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

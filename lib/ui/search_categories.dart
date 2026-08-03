@@ -1,11 +1,18 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:pet_shop_project/ui/home_page.dart';
+import 'package:pet_shop_project/ui/wish_list_page.dart';
 
 class SearchCategories extends StatefulWidget {
   final String title;
   final String categoryId;
-  const SearchCategories({super.key, required this.title,required this.categoryId});
+  const SearchCategories({
+    super.key,
+    required this.title,
+    required this.categoryId,
+  });
 
   @override
   State<SearchCategories> createState() => _SearchCategoriesState();
@@ -20,54 +27,261 @@ class _SearchCategoriesState extends State<SearchCategories> {
       'name': 'Durable Rubber…',
       'price': '\$12.50',
       'rating': '4.9',
-      'favorite': true,
+      'favorite': false,
     },
     {
       'image': 'assets/Comfort Nylon….png',
       'name': 'Comfort Nylon…',
       'price': '\$24.00',
       'rating': '4.7',
-      'favorite': true,
+      'favorite': false,
     },
     {
       'image': 'assets/Orthopedic Cloud.png',
       'name': 'Comfort Nylon…',
       'price': '\$85.00',
       'rating': '5.0',
-      'favorite': true,
+      'favorite': false,
     },
     {
       'image': 'assets/Flow-Stream….png',
       'name': 'Flow-Stream…',
       'price': '\$42.99',
       'rating': '4.8',
-      'favorite': true,
+      'favorite': false,
     },
     {
       'image': 'assets/Salmon Fusion….png',
       'name': 'Salmon Fusion…',
       'price': '\$18.00',
       'rating': '4.9',
-      'favorite': true,
+      'favorite': false,
     },
     {
       'image': 'assets/Eco-Ceramic….png',
       'name': 'Eco-Ceramic…',
       'price': '\$28.50',
       'rating': '4.6',
-      'favorite': true,
+      'favorite': false,
     },
   ];
+  Future<void> addToCart(Map<String, dynamic> product) async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please login first')));
+      return;
+    }
+
+    try {
+      final productId = product['name']
+          .toString()
+          .toLowerCase()
+          .replaceAll(' ', '_')
+          .replaceAll('_', '');
+
+      await FirebaseFirestore.instance
+          .collection('carts')
+          .doc(user.uid)
+          .collection('items')
+          .doc(productId)
+          .set({
+            'productId': productId,
+            'name': product['name'],
+            'brand': product['brand'],
+            'image': product['image'],
+            'price': product['price'],
+            'quantity': 1,
+            'addedAt': FieldValue.serverTimestamp(),
+          });
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${product['name']} added to cart')),
+      );
+    } catch (e) {
+      debugPrint('FIREBASE ERROR: $e');
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to add product: $e')));
+    }
+  }
+
+  Future<void> addToWishlist(Map<String, dynamic> product) async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please login first')));
+      return;
+    }
+
+    try {
+      final productId = product['name']
+          .toString()
+          .toLowerCase()
+          .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+          .replaceAll(RegExp(r'^_|_$'), '');
+
+      await FirebaseFirestore.instance
+          .collection('Wishlist')
+          .doc(user.uid)
+          .collection('items')
+          .doc(productId)
+          .set({
+            'productId': productId,
+            'name': product['name'].toString(),
+            'image': product['image'].toString(),
+            'price': product['price'].toString(),
+            'rating': product['rating'].toString(),
+            'addedAt': FieldValue.serverTimestamp(),
+          });
+    } catch (e) {
+      debugPrint('WISHLIST ADD ERROR: $e');
+    }
+  }
+
+  Future<void> removeFromWishlist(Map<String, dynamic> product) async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please login first')));
+      return;
+    }
+
+    try {
+      final productId = product['name']
+          .toString()
+          .toLowerCase()
+          .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+          .replaceAll(RegExp(r'^_|_$'), '');
+
+      await FirebaseFirestore.instance
+          .collection('Wishlist')
+          .doc(user.uid)
+          .collection('items')
+          .doc(productId)
+          .delete();
+    } catch (e) {
+      debugPrint('WISHLIST REMOVE ERROR: $e');
+    }
+  }
+
+  Future<void> toggleWishlist(Map<String, dynamic> product, int index) async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please login first')));
+      return;
+    }
+
+    final bool isCurrentlyFavorite = product['favorite'] == true;
+
+    // Update UI first
+    setState(() {
+      products[index]['favorite'] = !isCurrentlyFavorite;
+    });
+
+    try {
+      if (isCurrentlyFavorite) {
+        // Heart was colored -> Remove from wishlist
+        await removeFromWishlist(product);
+
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${product['name']} removed from wishlist')),
+        );
+      } else {
+        // Heart was not colored -> Add to wishlist
+        await addToWishlist(product);
+
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${product['name']} added to wishlist')),
+        );
+      }
+    } catch (e) {
+      // If Firestore fails, restore previous UI state
+      if (!mounted) return;
+
+      setState(() {
+        products[index]['favorite'] = isCurrentlyFavorite;
+      });
+
+      debugPrint('TOGGLE WISHLIST ERROR: $e');
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    loadWishlistStatus();
+  }
+
+  Future<void> loadWishlistStatus() async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) return;
+
+    try {
+      final snapshot =
+          await FirebaseFirestore.instance
+              .collection('Wishlist')
+              .doc(user.uid)
+              .collection('items')
+              .get();
+
+      final wishlistIds = snapshot.docs.map((doc) => doc.id).toSet();
+
+      if (!mounted) return;
+
+      setState(() {
+        for (int i = 0; i < products.length; i++) {
+          final productId = products[i]['name']
+              .toString()
+              .toLowerCase()
+              .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+              .replaceAll(RegExp(r'^_|_$'), '');
+
+          products[i]['favorite'] = wishlistIds.contains(productId);
+        }
+      });
+    } catch (e) {
+      debugPrint('LOAD WISHLIST ERROR: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         leadingWidth: 60.w,
-        leading: GestureDetector( 
-          onTap:() {
+        leading: GestureDetector(
+          onTap: () {
             Navigator.pop(context);
           },
-      child:      Icon(Icons.arrow_back_ios)),
+          child: Icon(Icons.arrow_back_ios),
+        ),
         title: Center(
           child: Padding(
             padding: EdgeInsets.only(left: 30.w),
@@ -99,7 +313,7 @@ class _SearchCategoriesState extends State<SearchCategories> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(height: 30.h),
-             
+
               Text(
                 widget.title,
                 style: TextStyle(
@@ -235,24 +449,28 @@ class _SearchCategoriesState extends State<SearchCategories> {
                                       top: 8,
                                       right: 12,
                                       child: GestureDetector(
-                                        onTap: () {
-                                          setState(() {
-                                            products[index]['favorite'] =
-                                                !products[index]['favorite'];
-                                          });
+                                        onTap: () async {
+                                          await toggleWishlist(item, index);
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder:
+                                                  (context) => WishListPage(),
+                                            ),
+                                          );
                                         },
                                         child: CircleAvatar(
                                           radius: 16.r,
                                           backgroundColor: Colors.white,
                                           child: Icon(
-                                            products[index]['favorite']
-                                                ? Icons.favorite_border
-                                                : Icons.favorite,
+                                            item['favorite'] == true
+                                                ? Icons.favorite
+                                                : Icons.favorite_border,
                                             size: 18.sp,
                                             color:
-                                                products[index]['favorite']
-                                                    ? Colors.grey
-                                                    : Color(0xffA73927),
+                                                item['favorite'] == true
+                                                    ? const Color(0xffA73927)
+                                                    : Colors.grey,
                                           ),
                                         ),
                                       ),
@@ -312,7 +530,15 @@ class _SearchCategoriesState extends State<SearchCategories> {
                                       ),
                                       padding: EdgeInsets.zero,
                                     ),
-                                    onPressed: () {},
+                                    onPressed: () async {
+                                      await addToCart(item);
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => WishListPage(),
+                                        ),
+                                      );
+                                    },
                                     child: Row(
                                       mainAxisAlignment:
                                           MainAxisAlignment.center,

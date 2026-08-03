@@ -18,6 +18,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int selectedIndex = 0;
+  final Set<String> wishlistedProducts = {};
 
   final FirebaseFirestore db = FirebaseFirestore.instance;
 
@@ -25,12 +26,6 @@ class _HomePageState extends State<HomePage> {
     return db.collection('categories').snapshots();
   }
 
-  // final List<Map<String, dynamic>> categories = [
-  //   {"icon": Icons.pets, "name": "Dogs"},
-  //   {"icon": Icons.cruelty_free, "name": "Cats"},
-  //   {"icon": Icons.set_meal, "name": "Fish"},
-  //   {"icon": Icons.flutter_dash, "name": "Birds"},
-  // ];
   final List<Map<String, String>> dogProducts = [
     {
       "image": "assets/Background.png",
@@ -100,6 +95,190 @@ class _HomePageState extends State<HomePage> {
       ).showSnackBar(SnackBar(content: Text('Failed to add product: $e')));
     }
   }
+
+  // Future<void> addToWishlist(Map<String, String> product) async {
+  //   final user = FirebaseAuth.instance.currentUser;
+
+  //   if (user == null) {
+  //     ScaffoldMessenger.of(
+  //       context,
+  //     ).showSnackBar(const SnackBar(content: Text('Please login first')));
+  //     return;
+  //   }
+
+  //   try {
+  //     final productId = product['name']!.toLowerCase().replaceAll(' ', '_');
+
+  //     await FirebaseFirestore.instance
+  //         .collection('Wishlist')
+  //         .doc(user.uid)
+  //         .collection('items')
+  //         .doc(productId)
+  //         .set({
+  //           'productId': productId,
+  //           'name': product['name'],
+  //           'brand': product['brand'],
+  //           'image': product['image'],
+  //           'price': product['price'],
+  //           'addedAt': FieldValue.serverTimestamp(),
+  //         });
+
+  //     if (!mounted) return;
+
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(content: Text('${product['name']} added to wishlist')),
+  //     );
+  //   } catch (e) {
+  //     debugPrint('WISHLIST ERROR: $e');
+
+  //     if (!mounted) return;
+
+  //     ScaffoldMessenger.of(
+  //       context,
+  //     ).showSnackBar(SnackBar(content: Text('Failed to add to wishlist: $e')));
+  //   }
+  // }
+
+  // Future<void> removeFromWishlist(Map<String, dynamic> product) async {
+  //   final user = FirebaseAuth.instance.currentUser;
+
+  //   if (user == null) {
+  //     if (!mounted) return;
+
+  //     ScaffoldMessenger.of(
+  //       context,
+  //     ).showSnackBar(const SnackBar(content: Text('Please login first')));
+  //     return;
+  //   }
+
+  //   try {
+  //     final productId = product['name']
+  //         .toString()
+  //         .toLowerCase()
+  //         .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+  //         .replaceAll(RegExp(r'^_|_$'), '');
+
+  //     await FirebaseFirestore.instance
+  //         .collection('Wishlist')
+  //         .doc(user.uid)
+  //         .collection('items')
+  //         .doc(productId)
+  //         .delete();
+  //   } catch (e) {
+  //     debugPrint('WISHLIST REMOVE ERROR: $e');
+  //   }
+  // }
+
+  Future<void> toggleWishlist(Map<String, String> product) async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please login first')));
+      return;
+    }
+
+    final productId = product['name']!
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+        .replaceAll(RegExp(r'^_|_$'), '');
+
+    final bool isCurrentlyWishlisted = wishlistedProducts.contains(productId);
+
+    // Update icon immediately
+    setState(() {
+      if (isCurrentlyWishlisted) {
+        wishlistedProducts.remove(productId);
+      } else {
+        wishlistedProducts.add(productId);
+      }
+    });
+
+    try {
+      if (isCurrentlyWishlisted) {
+        // RED HEART -> REMOVE
+        await FirebaseFirestore.instance
+            .collection('Wishlist')
+            .doc(user.uid)
+            .collection('items')
+            .doc(productId)
+            .delete();
+
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${product['name']} removed from wishlist')),
+        );
+      } else {
+        // OUTLINE HEART -> ADD
+        await FirebaseFirestore.instance
+            .collection('Wishlist')
+            .doc(user.uid)
+            .collection('items')
+            .doc(productId)
+            .set({
+              'productId': productId,
+              'name': product['name'],
+              'brand': product['brand'],
+              'image': product['image'],
+              'price': product['price'],
+              'addedAt': FieldValue.serverTimestamp(),
+            });
+
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${product['name']} added to wishlist')),
+        );
+      }
+    } catch (e) {
+      // If Firebase operation fails, restore previous state
+      if (!mounted) return;
+
+      setState(() {
+        if (isCurrentlyWishlisted) {
+          wishlistedProducts.add(productId);
+        } else {
+          wishlistedProducts.remove(productId);
+        }
+      });
+
+      debugPrint('TOGGLE WISHLIST ERROR: $e');
+    }
+  }
+  @override
+void initState() {
+  super.initState();
+  loadWishlist();
+}
+Future<void> loadWishlist() async {
+  final user = FirebaseAuth.instance.currentUser;
+
+  if (user == null) return;
+
+  try {
+    final snapshot = await FirebaseFirestore.instance
+        .collection('Wishlist')
+        .doc(user.uid)
+        .collection('items')
+        .get();
+
+    if (!mounted) return;
+
+    setState(() {
+      wishlistedProducts.clear();
+
+      for (final doc in snapshot.docs) {
+        wishlistedProducts.add(doc.id);
+      }
+    });
+  } catch (e) {
+    debugPrint('LOAD WISHLIST ERROR: $e');
+  }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -346,6 +525,14 @@ class _HomePageState extends State<HomePage> {
                                 ),
                             itemBuilder: (context, index) {
                               final product = dogProducts[index];
+                              final productId = product['name']!
+                                  .toLowerCase()
+                                  .replaceAll(' ', '_');
+
+                              // Check if THIS product is wishlisted
+                              final isWishlisted = wishlistedProducts.contains(
+                                productId,
+                              );
                               return Card(
                                 elevation: 3,
                                 shape: RoundedRectangleBorder(
@@ -357,36 +544,85 @@ class _HomePageState extends State<HomePage> {
                                     crossAxisAlignment:
                                         CrossAxisAlignment.center,
                                     children: [
-                                      ClipRRect(
-                                        borderRadius: BorderRadius.circular(
-                                          15.r,
-                                        ),
-                                        child: SizedBox(
-                                          height: 120.h,
-                                          width: double.infinity,
-                                          child: ClipRRect(
-                                            borderRadius: BorderRadius.circular(
-                                              15.r,
-                                            ),
-                                            child: GestureDetector(
-                                              onTap: () {
-                                                if (index == 0) {
-                                                  Navigator.push(
-                                                    context,
-                                                    MaterialPageRoute(
-                                                      builder:
-                                                          (context) =>
-                                                              OrganicGrain(),
-                                                    ),
-                                                  );
-                                                }
-                                              },
-                                              child: Image.asset(
-                                                product["image"]!,
-                                                fit: BoxFit.cover,
+                                      SizedBox(
+                                        height: 120.h,
+                                        width: double.infinity,
+                                        child: Stack(
+                                          children: [
+                                            // PRODUCT IMAGE
+                                            Positioned.fill(
+                                              child: ClipRRect(
+                                                borderRadius:
+                                                    BorderRadius.circular(15.r),
+                                                child: GestureDetector(
+                                                  onTap: () {
+                                                    if (index == 0) {
+                                                      Navigator.push(
+                                                        context,
+                                                        MaterialPageRoute(
+                                                          builder:
+                                                              (context) =>
+                                                                  OrganicGrain(),
+                                                        ),
+                                                      );
+                                                    }
+                                                  },
+                                                  child: Image.asset(
+                                                    product["image"]!,
+                                                    fit: BoxFit.cover,
+                                                  ),
+                                                ),
                                               ),
                                             ),
-                                          ),
+
+                                            // WISHLIST HEART BUTTON
+                                            // WISHLIST HEART BUTTON
+                                            Positioned(
+                                              top: 8.h,
+                                              right: 8.w,
+                                              child: Container(
+                                                decoration: BoxDecoration(
+                                                  color: Colors.white,
+                                                  shape: BoxShape.circle,
+                                                  boxShadow: [
+                                                    BoxShadow(
+                                                      color: Colors.black
+                                                          .withOpacity(0.15),
+                                                      blurRadius: 5,
+                                                      offset: const Offset(
+                                                        0,
+                                                        2,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                child: IconButton(
+                                                  padding: EdgeInsets.zero,
+                                                  constraints: BoxConstraints(
+                                                    minWidth: 35.w,
+                                                    minHeight: 35.h,
+                                                  ),
+                                                  onPressed: () async {
+                                                    await toggleWishlist(
+                                                      product,
+                                                    );
+                                                  },
+                                                  icon: Icon(
+                                                    isWishlisted
+                                                        ? Icons.favorite
+                                                        : Icons.favorite_border,
+                                                    color:
+                                                        isWishlisted
+                                                            ? Colors.red
+                                                            : const Color(
+                                                              0xffA73927,
+                                                            ),
+                                                    size: 22.sp,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
                                       SizedBox(height: 10.h),
@@ -428,6 +664,17 @@ class _HomePageState extends State<HomePage> {
                                             print('ADD TO CART BUTTON CLICKED');
 
                                             await addToCart(product);
+
+                                            if (context.mounted) {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder:
+                                                      (context) =>
+                                                          const WishListPage(),
+                                                ),
+                                              );
+                                            }
                                           },
                                           style: ElevatedButton.styleFrom(
                                             backgroundColor: const Color(
