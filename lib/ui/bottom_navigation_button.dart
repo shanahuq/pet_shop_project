@@ -14,19 +14,27 @@ class BottomNavigationButton extends StatefulWidget {
 
 class _BottomNavigationButtonState extends State<BottomNavigationButton> {
   int selectedIndex = 0;
-  final List<Widget> pages = [
-    HomePage(),
-    SearchPage(),
-    WishListPage(),
-    ProfilePage(),
-  ];
+ 
+  void goToWishlist() {
+    setState(() {
+      selectedIndex = 2;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    final List<Widget> pages = [
+      HomePage(onGoToWishlist: goToWishlist),
+      const SearchPage(),
+      const WishListPage(),
+      const ProfilePage(),
+    ];
+
     return Scaffold(
       body: pages[selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: selectedIndex,
-        selectedItemColor: Color(0xffF27059),
+        selectedItemColor: const Color(0xffF27059),
         unselectedItemColor: Colors.grey,
         onTap: (value) {
           setState(() {

@@ -35,8 +35,9 @@ class _ProfilePageState extends State<ProfilePage> {
       final userDoc = await _firestore.collection('users').doc(user.uid).get();
 
       debugPrint('Current UID: ${user.uid}');
-      debugPrint('User document exists: ${userDoc.exists}');
-      debugPrint('User data: ${userDoc.data()}');
+      debugPrint('Looking for document: users/${user.uid}');
+      debugPrint('Document exists: ${userDoc.exists}');
+      debugPrint('Data: ${userDoc.data()}');
 
       if (userDoc.exists) {
         setState(() {

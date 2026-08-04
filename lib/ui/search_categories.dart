@@ -70,6 +70,7 @@ class _SearchCategoriesState extends State<SearchCategories> {
 
     if (user == null) {
       if (!mounted) return;
+
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Please login first')));
@@ -80,23 +81,33 @@ class _SearchCategoriesState extends State<SearchCategories> {
       final productId = product['name']
           .toString()
           .toLowerCase()
-          .replaceAll(' ', '_')
-          .replaceAll('_', '');
+          .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+          .replaceAll(RegExp(r'^_|_$'), '');
 
-      await FirebaseFirestore.instance
+      final cartItemRef = FirebaseFirestore.instance
           .collection('carts')
           .doc(user.uid)
           .collection('items')
-          .doc(productId)
-          .set({
-            'productId': productId,
-            'name': product['name'],
-            'brand': product['brand'],
-            'image': product['image'],
-            'price': product['price'],
-            'quantity': 1,
-            'addedAt': FieldValue.serverTimestamp(),
-          });
+          .doc(productId);
+
+      final cartItem = await cartItemRef.get();
+
+      if (cartItem.exists) {
+        // Product already exists
+        // Increase quantity by 1
+        await cartItemRef.update({'quantity': FieldValue.increment(1)});
+      } else {
+        // First time adding product
+        await cartItemRef.set({
+          'productId': productId,
+          'name': product['name'].toString(),
+          'image': product['image'].toString(),
+          'price': product['price'].toString(),
+          'rating': product['rating'].toString(),
+          'quantity': 1,
+          'addedAt': FieldValue.serverTimestamp(),
+        });
+      }
 
       if (!mounted) return;
 
@@ -104,7 +115,7 @@ class _SearchCategoriesState extends State<SearchCategories> {
         SnackBar(content: Text('${product['name']} added to cart')),
       );
     } catch (e) {
-      debugPrint('FIREBASE ERROR: $e');
+      debugPrint('ADD TO CART ERROR: $e');
 
       if (!mounted) return;
 
@@ -309,114 +320,123 @@ class _SearchCategoriesState extends State<SearchCategories> {
       body: SafeArea(
         child: Padding(
           padding: EdgeInsets.symmetric(horizontal: 30.w),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(height: 30.h),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(height: 30.h),
 
-              Text(
-                widget.title,
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 28.sp,
-                  color: Color(0xff1B1C1C),
+                Text(
+                  widget.title,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 28.sp,
+                    color: Color(0xff1B1C1C),
+                  ),
                 ),
-              ),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16.w),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        '24 premium items for your best friend',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w400,
-                          fontSize: 14.sp,
-                          color: const Color(0xff57423D),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16.w),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '24 premium items for your best friend',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w400,
+                            fontSize: 14.sp,
+                            color: const Color(0xff57423D),
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
 
-                    SizedBox(width: 8.w),
+                      SizedBox(width: 8.w),
 
-                    OutlinedButton.icon(
-                      onPressed: () {},
-                      icon: Icon(Icons.tune, color: Colors.black, size: 18.sp),
-                      label: Text(
-                        'Filter',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12.sp,
+                      OutlinedButton.icon(
+                        onPressed: () {},
+                        icon: Icon(
+                          Icons.tune,
                           color: Colors.black,
+                          size: 18.sp,
                         ),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        backgroundColor: const Color(0xffF0EDED),
-                        side: const BorderSide(color: Color(0xffDFC0BA)),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16.r),
-                        ),
-                        padding: EdgeInsets.symmetric(horizontal: 8.w),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(height: 10.h),
-              SizedBox(
-                height: 45.h,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  separatorBuilder: (_, __) => SizedBox(width: 10.w),
-                  itemCount: tabs.length,
-                  itemBuilder: (context, index) {
-                    final bool isSelected = selectedTab == index;
-                    return GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          selectedTab = index;
-                        });
-                      },
-                      child: AnimatedContainer(
-                        duration: const Duration(microseconds: 250),
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 18.w,
-                          vertical: 10.h,
-                        ),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20.r),
-                          color: isSelected ? Color(0xffF27059) : Colors.white,
-                          border: Border.all(
-                            color:
-                                isSelected ? Colors.white : Color(0xffDFC0BA),
+                        label: Text(
+                          'Filter',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12.sp,
+                            color: Colors.black,
                           ),
                         ),
-                        child: Center(
-                          child: Text(
-                            tabs[index],
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 12.sp,
-                              color: Color(0xff650700),
+                        style: OutlinedButton.styleFrom(
+                          backgroundColor: const Color(0xffF0EDED),
+                          side: const BorderSide(color: Color(0xffDFC0BA)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16.r),
+                          ),
+                          padding: EdgeInsets.symmetric(horizontal: 8.w),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: 10.h),
+                SizedBox(
+                  height: 45.h,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    separatorBuilder: (_, __) => SizedBox(width: 10.w),
+                    itemCount: tabs.length,
+                    itemBuilder: (context, index) {
+                      final bool isSelected = selectedTab == index;
+                      return GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            selectedTab = index;
+                          });
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(microseconds: 250),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 18.w,
+                            vertical: 10.h,
+                          ),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(20.r),
+                            color:
+                                isSelected ? Color(0xffF27059) : Colors.white,
+                            border: Border.all(
+                              color:
+                                  isSelected ? Colors.white : Color(0xffDFC0BA),
+                            ),
+                          ),
+                          child: Center(
+                            child: Text(
+                              tabs[index],
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12.sp,
+                                color: Color(0xff650700),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    );
-                  },
+                      );
+                    },
+                  ),
                 ),
-              ),
-              SizedBox(height: 20.h),
-              Expanded(
-                child: Builder(
+                SizedBox(height: 20.h),
+                Builder(
                   builder: (context) {
                     if (selectedTab == 0) {
                       return GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+
                         itemCount: products.length,
+
                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 2,
                           crossAxisSpacing: 15.w,
@@ -426,11 +446,14 @@ class _SearchCategoriesState extends State<SearchCategories> {
 
                         itemBuilder: (context, index) {
                           final item = products[index];
+
                           return Container(
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(16.r),
                               color: Colors.white,
-                              border: Border.all(color: Color(0xffFFFFFF)),
+                              border: Border.all(
+                                color: const Color(0xffFFFFFF),
+                              ),
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -442,22 +465,17 @@ class _SearchCategoriesState extends State<SearchCategories> {
                                       child: Image.asset(
                                         item['image'],
                                         height: 140.h,
-                                        width: 140.w,
+                                        width: double.infinity,
+                                        fit: BoxFit.cover,
                                       ),
                                     ),
+
                                     Positioned(
-                                      top: 8,
-                                      right: 12,
+                                      top: 8.h,
+                                      right: 12.w,
                                       child: GestureDetector(
                                         onTap: () async {
                                           await toggleWishlist(item, index);
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder:
-                                                  (context) => WishListPage(),
-                                            ),
-                                          );
                                         },
                                         child: CircleAvatar(
                                           radius: 16.r,
@@ -477,12 +495,14 @@ class _SearchCategoriesState extends State<SearchCategories> {
                                     ),
                                   ],
                                 ),
+
                                 SizedBox(height: 10.h),
+
                                 Row(
                                   children: [
                                     Icon(
                                       Icons.star,
-                                      color: Color(0xffA73927),
+                                      color: const Color(0xffA73927),
                                       size: 16.sp,
                                     ),
                                     SizedBox(width: 4.w),
@@ -491,32 +511,41 @@ class _SearchCategoriesState extends State<SearchCategories> {
                                       style: TextStyle(
                                         fontWeight: FontWeight.w600,
                                         fontSize: 12.sp,
-                                        color: Color(0xff57423D),
+                                        color: const Color(0xff57423D),
                                       ),
                                     ),
                                   ],
                                 ),
+
                                 SizedBox(height: 8.h),
+
                                 Text(
                                   item['name'],
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
                                     fontWeight: FontWeight.w400,
                                     fontSize: 16.sp,
-                                    color: Color(0xff1B1C1C),
+                                    color: const Color(0xff1B1C1C),
                                   ),
                                 ),
+
                                 SizedBox(height: 5.h),
+
                                 Text(
                                   item['price'],
                                   style: TextStyle(
                                     fontWeight: FontWeight.w400,
                                     fontSize: 18.sp,
-                                    color: Color(0xffA73927),
+                                    color: const Color(0xffA73927),
                                   ),
                                 ),
+
+                                SizedBox(height: 10.h),
+
                                 SizedBox(
                                   width: double.infinity,
-                                  height: 50.h,
+                                  height: 45.h,
                                   child: OutlinedButton(
                                     style: OutlinedButton.styleFrom(
                                       backgroundColor: const Color(0xffA73927),
@@ -532,12 +561,16 @@ class _SearchCategoriesState extends State<SearchCategories> {
                                     ),
                                     onPressed: () async {
                                       await addToCart(item);
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => WishListPage(),
-                                        ),
-                                      );
+
+                                      if (!context.mounted) return;
+
+                                      // Navigate to your CartPage here
+                                      // Navigator.push(
+                                      //   context,
+                                      //   MaterialPageRoute(
+                                      //     builder: (context) => const CartPage(),
+                                      //   ),
+                                      // );
                                     },
                                     child: Row(
                                       mainAxisAlignment:
@@ -567,80 +600,81 @@ class _SearchCategoriesState extends State<SearchCategories> {
                         },
                       );
                     }
-                    return Center(child: const Text('no items'));
+
+                    return const Center(child: Text('no items'));
                   },
                 ),
-              ),
-              SizedBox(height: 30.h),
-              Center(
-                child: Text(
-                  'Showing 6 of 24 items',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w400,
-                    fontSize: 12.sp,
-                    color: Color(0xff57423D),
-                  ),
-                ),
-              ),
-              SizedBox(height: 20.h),
-              Center(
-                child: SizedBox(
-                  width: 150.w,
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          height: 4.h,
-                          width: 150.w,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.only(
-                              topLeft: Radius.circular(20.r),
-                              bottomLeft: Radius.circular(20.r),
-                            ),
-                            color: Color(0xffA73927),
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: Container(
-                          height: 4.h,
-                          width: 150.w,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.only(
-                              topRight: Radius.circular(20.r),
-                              bottomRight: Radius.circular(20.r),
-                            ),
-                            color: Color(0xffE4E2E1),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              SizedBox(height: 20.h),
-              Center(
-                child: OutlinedButton(
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: Size(190.w, 55.h),
-                    side: BorderSide(color: Color(0xffA73927)),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18.r),
-                    ),
-                  ),
-                  onPressed: () {},
+                SizedBox(height: 30.h),
+                Center(
                   child: Text(
-                    'Load More Essentials',
+                    'Showing 6 of 24 items',
                     style: TextStyle(
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w400,
                       fontSize: 12.sp,
-                      color: Color(0xffA73927),
+                      color: Color(0xff57423D),
                     ),
                   ),
                 ),
-              ),
-              SizedBox(height: 30.h),
-            ],
+                SizedBox(height: 20.h),
+                Center(
+                  child: SizedBox(
+                    width: 150.w,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            height: 4.h,
+                            width: 150.w,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.only(
+                                topLeft: Radius.circular(20.r),
+                                bottomLeft: Radius.circular(20.r),
+                              ),
+                              color: Color(0xffA73927),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: Container(
+                            height: 4.h,
+                            width: 150.w,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.only(
+                                topRight: Radius.circular(20.r),
+                                bottomRight: Radius.circular(20.r),
+                              ),
+                              color: Color(0xffE4E2E1),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                SizedBox(height: 20.h),
+                Center(
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: Size(190.w, 55.h),
+                      side: BorderSide(color: Color(0xffA73927)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18.r),
+                      ),
+                    ),
+                    onPressed: () {},
+                    child: Text(
+                      'Load More Essentials',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12.sp,
+                        color: Color(0xffA73927),
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 30.h),
+              ],
+            ),
           ),
         ),
       ),
