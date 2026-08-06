@@ -370,13 +370,15 @@ class _HomePageState extends State<HomePage> {
 
                           return GestureDetector(
                             onTap: () {
+                              print("Clicked category: ${data['name']}");
+
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                   builder:
-                                      (context) => SearchCategories(
-                                        title: data['name'] ?? '',
-                                        categoryId: 'categoryId',
+                                      (_) => SearchCategories(
+                                        title: data['name'],
+                                        categoryId: categories[index].id,
                                       ),
                                 ),
                               );

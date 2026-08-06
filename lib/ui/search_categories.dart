@@ -21,50 +21,13 @@ class SearchCategories extends StatefulWidget {
 class _SearchCategoriesState extends State<SearchCategories> {
   int selectedTab = 0;
   final List<String> tabs = ['All Items', 'Toys', 'Walk Gear', 'Wellness'];
-  final List<Map<String, dynamic>> products = [
-    {
-      'image': 'assets/durable_rubber.png',
-      'name': 'Durable Rubber…',
-      'price': '\$12.50',
-      'rating': '4.9',
-      'favorite': false,
-    },
-    {
-      'image': 'assets/Comfort Nylon….png',
-      'name': 'Comfort Nylon…',
-      'price': '\$24.00',
-      'rating': '4.7',
-      'favorite': false,
-    },
-    {
-      'image': 'assets/Orthopedic Cloud.png',
-      'name': 'Comfort Nylon…',
-      'price': '\$85.00',
-      'rating': '5.0',
-      'favorite': false,
-    },
-    {
-      'image': 'assets/Flow-Stream….png',
-      'name': 'Flow-Stream…',
-      'price': '\$42.99',
-      'rating': '4.8',
-      'favorite': false,
-    },
-    {
-      'image': 'assets/Salmon Fusion….png',
-      'name': 'Salmon Fusion…',
-      'price': '\$18.00',
-      'rating': '4.9',
-      'favorite': false,
-    },
-    {
-      'image': 'assets/Eco-Ceramic….png',
-      'name': 'Eco-Ceramic…',
-      'price': '\$28.50',
-      'rating': '4.6',
-      'favorite': false,
-    },
-  ];
+
+  final FirebaseFirestore db = FirebaseFirestore.instance;
+
+  Stream<QuerySnapshot> get productsStream {
+    return FirebaseFirestore.instance.collection('products').snapshots();
+  }
+
   Future<void> addToCart(Map<String, dynamic> product) async {
     final user = FirebaseAuth.instance.currentUser;
 
@@ -192,93 +155,46 @@ class _SearchCategoriesState extends State<SearchCategories> {
     }
   }
 
-  Future<void> toggleWishlist(Map<String, dynamic> product, int index) async {
+  Future<void> toggleWishlist(Map<String, dynamic> product) async {
     final user = FirebaseAuth.instance.currentUser;
 
     if (user == null) {
-      if (!mounted) return;
-
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Please login first')));
       return;
     }
 
-    final bool isCurrentlyFavorite = product['favorite'] == true;
+    final productId = product['name']
+        .toString()
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+        .replaceAll(RegExp(r'^_|_$'), '');
 
-    // Update UI first
-    setState(() {
-      products[index]['favorite'] = !isCurrentlyFavorite;
-    });
+    final docRef = FirebaseFirestore.instance
+        .collection('Wishlist')
+        .doc(user.uid)
+        .collection('items')
+        .doc(productId);
 
-    try {
-      if (isCurrentlyFavorite) {
-        // Heart was colored -> Remove from wishlist
-        await removeFromWishlist(product);
+    final doc = await docRef.get();
 
-        if (!mounted) return;
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${product['name']} removed from wishlist')),
-        );
-      } else {
-        // Heart was not colored -> Add to wishlist
-        await addToWishlist(product);
-
-        if (!mounted) return;
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${product['name']} added to wishlist')),
-        );
-      }
-    } catch (e) {
-      // If Firestore fails, restore previous UI state
-      if (!mounted) return;
-
-      setState(() {
-        products[index]['favorite'] = isCurrentlyFavorite;
-      });
-
-      debugPrint('TOGGLE WISHLIST ERROR: $e');
-    }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    loadWishlistStatus();
-  }
-
-  Future<void> loadWishlistStatus() async {
-    final user = FirebaseAuth.instance.currentUser;
-
-    if (user == null) return;
-
-    try {
-      final snapshot =
-          await FirebaseFirestore.instance
-              .collection('Wishlist')
-              .doc(user.uid)
-              .collection('items')
-              .get();
-
-      final wishlistIds = snapshot.docs.map((doc) => doc.id).toSet();
+    if (doc.exists) {
+      await removeFromWishlist(product);
 
       if (!mounted) return;
 
-      setState(() {
-        for (int i = 0; i < products.length; i++) {
-          final productId = products[i]['name']
-              .toString()
-              .toLowerCase()
-              .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
-              .replaceAll(RegExp(r'^_|_$'), '');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${product['name']} removed from wishlist')),
+      );
+    } else {
+      await addToWishlist(product);
 
-          products[i]['favorite'] = wishlistIds.contains(productId);
-        }
-      });
-    } catch (e) {
-      debugPrint('LOAD WISHLIST ERROR: $e');
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${product['name']} added to wishlist')),
+      );
     }
   }
 
@@ -431,171 +347,258 @@ class _SearchCategoriesState extends State<SearchCategories> {
                 Builder(
                   builder: (context) {
                     if (selectedTab == 0) {
-                      return GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
+                      return StreamBuilder<QuerySnapshot>(
+                        stream: productsStream,
+                        builder: (context, snapshot) {
+                          print("Searching category = '${widget.title}'");
 
-                        itemCount: products.length,
+                          if (snapshot.hasData) {
+                            print(
+                              "Products found = ${snapshot.data!.docs.length}",
+                            );
 
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 15.w,
-                          mainAxisSpacing: 15.h,
-                          childAspectRatio: 0.55,
-                        ),
+                            for (var doc in snapshot.data!.docs) {
+                              print(doc.data());
+                            }
+                          }
 
-                        itemBuilder: (context, index) {
-                          final item = products[index];
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return const Center(
+                              child: CircularProgressIndicator(),
+                            );
+                          }
 
-                          return Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(16.r),
-                              color: Colors.white,
-                              border: Border.all(
-                                color: const Color(0xffFFFFFF),
-                              ),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Stack(
-                                  children: [
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(16.r),
-                                      child: Image.asset(
-                                        item['image'],
-                                        height: 140.h,
-                                        width: double.infinity,
-                                        fit: BoxFit.cover,
-                                      ),
-                                    ),
+                          if (snapshot.hasError) {
+                            return Text(snapshot.error.toString());
+                          }
 
-                                    Positioned(
-                                      top: 8.h,
-                                      right: 12.w,
-                                      child: GestureDetector(
-                                        onTap: () async {
-                                          await toggleWishlist(item, index);
-                                        },
-                                        child: CircleAvatar(
-                                          radius: 16.r,
-                                          backgroundColor: Colors.white,
-                                          child: Icon(
-                                            item['favorite'] == true
-                                                ? Icons.favorite
-                                                : Icons.favorite_border,
-                                            size: 18.sp,
-                                            color:
-                                                item['favorite'] == true
-                                                    ? const Color(0xffA73927)
-                                                    : Colors.grey,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
+                          if (!snapshot.hasData ||
+                              snapshot.data!.docs.isEmpty) {
+                            return const Center(
+                              child: Text("No products found"),
+                            );
+                          }
+
+                          final products = snapshot.data!.docs;
+
+                          // your GridView.builder...
+                          print("Products found: ${products.length}");
+                          for (var doc in snapshot.data!.docs) {
+                            print(doc.data());
+                          }
+                          return GridView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+
+                            itemCount: products.length,
+
+                            gridDelegate:
+                                SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 2,
+                                  crossAxisSpacing: 15.w,
+                                  mainAxisSpacing: 15.h,
+                                  childAspectRatio: 0.55,
                                 ),
 
-                                SizedBox(height: 10.h),
-
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Icons.star,
-                                      color: const Color(0xffA73927),
-                                      size: 16.sp,
-                                    ),
-                                    SizedBox(width: 4.w),
-                                    Text(
-                                      item['rating'],
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 12.sp,
-                                        color: const Color(0xff57423D),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-
-                                SizedBox(height: 8.h),
-
-                                Text(
-                                  item['name'],
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w400,
-                                    fontSize: 16.sp,
-                                    color: const Color(0xff1B1C1C),
+                            itemBuilder: (context, index) {
+                              final item =
+                                  products[index].data()
+                                      as Map<String, dynamic>;
+                              return Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(16.r),
+                                  color: Colors.white,
+                                  border: Border.all(
+                                    color: const Color(0xffFFFFFF),
                                   ),
                                 ),
-
-                                SizedBox(height: 5.h),
-
-                                Text(
-                                  item['price'],
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w400,
-                                    fontSize: 18.sp,
-                                    color: const Color(0xffA73927),
-                                  ),
-                                ),
-
-                                SizedBox(height: 10.h),
-
-                                SizedBox(
-                                  width: double.infinity,
-                                  height: 45.h,
-                                  child: OutlinedButton(
-                                    style: OutlinedButton.styleFrom(
-                                      backgroundColor: const Color(0xffA73927),
-                                      side: const BorderSide(
-                                        color: Color(0xffA73927),
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(
-                                          16.r,
-                                        ),
-                                      ),
-                                      padding: EdgeInsets.zero,
-                                    ),
-                                    onPressed: () async {
-                                      await addToCart(item);
-
-                                      if (!context.mounted) return;
-
-                                      // Navigate to your CartPage here
-                                      // Navigator.push(
-                                      //   context,
-                                      //   MaterialPageRoute(
-                                      //     builder: (context) => const CartPage(),
-                                      //   ),
-                                      // );
-                                    },
-                                    child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Stack(
                                       children: [
-                                        Icon(
-                                          Icons.shopping_cart_outlined,
-                                          color: Colors.white,
-                                          size: 20.sp,
+                                        ClipRRect(
+                                          borderRadius: BorderRadius.circular(
+                                            16.r,
+                                          ),
+                                          child:Container(
+  height: 140.h,
+  width: double.infinity,
+  color: Colors.orange,
+  child: const Center(
+    child: Text("IMAGE"),
+  ),
+)
                                         ),
-                                        SizedBox(width: 8.w),
-                                        Text(
-                                          'Add to Cart',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 12.sp,
-                                            color: Colors.white,
+
+                                        Positioned(
+                                          top: 8.h,
+                                          right: 12.w,
+                                          child: StreamBuilder<
+                                            DocumentSnapshot
+                                          >(
+                                            stream:
+                                                FirebaseFirestore.instance
+                                                    .collection('Wishlist')
+                                                    .doc(
+                                                      FirebaseAuth
+                                                          .instance
+                                                          .currentUser
+                                                          ?.uid,
+                                                    )
+                                                    .collection('items')
+                                                    .doc(
+                                                      item['name']
+                                                          .toString()
+                                                          .toLowerCase()
+                                                          .replaceAll(
+                                                            RegExp(
+                                                              r'[^a-z0-9]+',
+                                                            ),
+                                                            '_',
+                                                          )
+                                                          .replaceAll(
+                                                            RegExp(r'^_|_$'),
+                                                            '',
+                                                          ),
+                                                    )
+                                                    .snapshots(),
+                                            builder: (context, snapshot) {
+                                              final isFavorite =
+                                                  snapshot.data?.exists ??
+                                                  false;
+
+                                              return GestureDetector(
+                                                onTap: () async {
+                                                  await toggleWishlist(item);
+                                                },
+                                                child: CircleAvatar(
+                                                  radius: 16.r,
+                                                  backgroundColor: Colors.white,
+                                                  child: Icon(
+                                                    isFavorite
+                                                        ? Icons.favorite
+                                                        : Icons.favorite_border,
+                                                    color:
+                                                        isFavorite
+                                                            ? const Color(
+                                                              0xffA73927,
+                                                            )
+                                                            : Colors.grey,
+                                                  ),
+                                                ),
+                                              );
+                                            },
                                           ),
                                         ),
                                       ],
                                     ),
-                                  ),
+
+                                    SizedBox(height: 10.h),
+
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.star,
+                                          color: const Color(0xffA73927),
+                                          size: 16.sp,
+                                        ),
+                                        SizedBox(width: 4.w),
+                                        Text(
+                                          item['rating'].toString(),
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 12.sp,
+                                            color: const Color(0xff57423D),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+
+                                    SizedBox(height: 8.h),
+
+                                    Text(
+                                      item['name'],
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w400,
+                                        fontSize: 16.sp,
+                                        color: const Color(0xff1B1C1C),
+                                      ),
+                                    ),
+
+                                    SizedBox(height: 5.h),
+
+                                    Text(
+                                      item['price'],
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w400,
+                                        fontSize: 18.sp,
+                                        color: const Color(0xffA73927),
+                                      ),
+                                    ),
+
+                                    SizedBox(height: 10.h),
+
+                                    SizedBox(
+                                      width: double.infinity,
+                                      height: 45.h,
+                                      child: OutlinedButton(
+                                        style: OutlinedButton.styleFrom(
+                                          backgroundColor: const Color(
+                                            0xffA73927,
+                                          ),
+                                          side: const BorderSide(
+                                            color: Color(0xffA73927),
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              16.r,
+                                            ),
+                                          ),
+                                          padding: EdgeInsets.zero,
+                                        ),
+                                        onPressed: () async {
+                                          await addToCart(item);
+
+                                          if (!context.mounted) return;
+
+                                          // Navigate to your CartPage here
+                                          // Navigator.push(
+                                          //   context,
+                                          //   MaterialPageRoute(
+                                          //     builder: (context) => const CartPage(),
+                                          //   ),
+                                          // );
+                                        },
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Icon(
+                                              Icons.shopping_cart_outlined,
+                                              color: Colors.white,
+                                              size: 20.sp,
+                                            ),
+                                            SizedBox(width: 8.w),
+                                            Text(
+                                              'Add to Cart',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 12.sp,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
+                              );
+                            },
                           );
                         },
                       );

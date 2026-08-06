@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:pet_shop_project/ui/sign_in.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class SignUp extends StatefulWidget {
   const SignUp({super.key});
@@ -45,10 +46,19 @@ class _SignUpState extends State<SignUp> {
 
     try {
       // Create Firebase account
-      await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
+      UserCredential userCredential = await _auth
+          .createUserWithEmailAndPassword(email: email, password: password);
+
+      String uid = userCredential.user!.uid;
+
+      await _firestore.collection('users').doc(uid).set({
+        'name': name,
+        'email': email,
+        'address': '', // or collect it during signup
+        'phone': '',
+        'role': 'customer',
+        'createdAt': FieldValue.serverTimestamp(),
+      });
 
       if (!mounted) return;
 
@@ -88,6 +98,8 @@ class _SignUpState extends State<SignUp> {
     }
   }
 
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -110,7 +122,8 @@ class _SignUpState extends State<SignUp> {
       body: SafeArea(
         child: Padding(
           padding: EdgeInsets.symmetric(horizontal: 30.w),
-          child: SingleChildScrollView(scrollDirection: Axis.vertical,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.vertical,
             child: Column(
               children: [
                 Align(
@@ -237,7 +250,9 @@ class _SignUpState extends State<SignUp> {
                     ),
                     child:
                         isLoading
-                            ? const CircularProgressIndicator(color: Colors.white)
+                            ? const CircularProgressIndicator(
+                              color: Colors.white,
+                            )
                             : Text(
                               'Create Account',
                               style: TextStyle(
@@ -309,7 +324,10 @@ class _SignUpState extends State<SignUp> {
                   children: [
                     Text(
                       'Already have an Account?',
-                      style: TextStyle(fontSize: 12.sp, color: Color(0xff1B1C1C)),
+                      style: TextStyle(
+                        fontSize: 12.sp,
+                        color: Color(0xff1B1C1C),
+                      ),
                     ),
                     TextButton(
                       onPressed: () {
