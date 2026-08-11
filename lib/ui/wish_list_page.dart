@@ -383,11 +383,33 @@ class CartItem extends StatelessWidget {
             // PRODUCT IMAGE
             ClipRRect(
               borderRadius: BorderRadius.circular(10.r),
-              child: Image.asset(
+              child: Image.network(
                 image,
                 width: 75.w,
                 height: 75.w,
                 fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    width: 75.w,
+                    height: 75.w,
+                    color: Colors.grey.shade200,
+                    child: const Icon(
+                      Icons.image_not_supported,
+                      color: Colors.grey,
+                    ),
+                  );
+                },
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) {
+                    return child;
+                  }
+
+                  return SizedBox(
+                    width: 75.w,
+                    height: 75.w,
+                    child: const Center(child: CircularProgressIndicator()),
+                  );
+                },
               ),
             ),
 
@@ -563,25 +585,22 @@ class WishListTab extends StatelessWidget {
 
     // User is not logged in
     if (user == null) {
-      return const Center(
-        child: Text('Please login first'),
-      );
+      return const Center(child: Text('Please login first'));
     }
 
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('Wishlist')
-          .doc(user.uid)
-          .collection('items')
-          .orderBy('addedAt', descending: true)
-          .snapshots(),
+      stream:
+          FirebaseFirestore.instance
+              .collection('Wishlist')
+              .doc(user.uid)
+              .collection('items')
+              .orderBy('addedAt', descending: true)
+              .snapshots(),
 
       builder: (context, snapshot) {
         // Loading
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: CircularProgressIndicator(),
-          );
+          return const Center(child: CircularProgressIndicator());
         }
 
         // Error
@@ -599,10 +618,7 @@ class WishListTab extends StatelessWidget {
           return const Center(
             child: Text(
               'Your wishlist is empty',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w500,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
             ),
           );
         }
@@ -611,10 +627,7 @@ class WishListTab extends StatelessWidget {
         final wishlistItems = snapshot.data!.docs;
 
         return ListView.builder(
-          padding: EdgeInsets.symmetric(
-            horizontal: 20.w,
-            vertical: 10.h,
-          ),
+          padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 10.h),
           itemCount: wishlistItems.length,
           itemBuilder: (context, index) {
             final doc = wishlistItems[index];
@@ -635,7 +648,6 @@ class WishListTab extends StatelessWidget {
     );
   }
 }
-
 
 class WishlistItem extends StatelessWidget {
   final String productId;
@@ -669,9 +681,7 @@ class WishlistItem extends StatelessWidget {
     return Card(
       elevation: 2,
       margin: EdgeInsets.only(bottom: 15.h),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18.r),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18.r)),
       child: Padding(
         padding: EdgeInsets.all(12.w),
         child: Row(
@@ -679,11 +689,33 @@ class WishlistItem extends StatelessWidget {
             // PRODUCT IMAGE
             ClipRRect(
               borderRadius: BorderRadius.circular(12.r),
-              child: Image.asset(
+              child: Image.network(
                 image,
                 width: 85.w,
                 height: 85.h,
                 fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    width: 85.w,
+                    height: 85.h,
+                    color: Colors.grey.shade200,
+                    child: const Icon(
+                      Icons.image_not_supported,
+                      color: Colors.grey,
+                    ),
+                  );
+                },
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) {
+                    return child;
+                  }
+
+                  return SizedBox(
+                    width: 85.w,
+                    height: 85.h,
+                    child: const Center(child: CircularProgressIndicator()),
+                  );
+                },
               ),
             ),
 
@@ -710,10 +742,7 @@ class WishlistItem extends StatelessWidget {
                     brand,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Colors.grey,
-                      fontSize: 13.sp,
-                    ),
+                    style: TextStyle(color: Colors.grey, fontSize: 13.sp),
                   ),
 
                   SizedBox(height: 8.h),
@@ -738,30 +767,18 @@ class WishlistItem extends StatelessWidget {
 
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Removed from wishlist',
-                        ),
-                      ),
+                      const SnackBar(content: Text('Removed from wishlist')),
                     );
                   }
                 } catch (e) {
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          'Error: $e',
-                        ),
-                      ),
-                    );
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text('Error: $e')));
                   }
                 }
               },
-              icon: Icon(
-                Icons.favorite,
-                color: Colors.red,
-                size: 25.sp,
-              ),
+              icon: Icon(Icons.favorite, color: Colors.red, size: 25.sp),
             ),
           ],
         ),

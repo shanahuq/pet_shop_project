@@ -24,9 +24,17 @@ class _SearchCategoriesState extends State<SearchCategories> {
 
   final FirebaseFirestore db = FirebaseFirestore.instance;
 
-  Stream<QuerySnapshot> get productsStream {
-    return FirebaseFirestore.instance.collection('products').snapshots();
-  }
+ Stream<QuerySnapshot> get productsStream {
+  print('==============================');
+  print('TITLE: "${widget.title}"');
+  print('CATEGORY ID: "${widget.categoryId}"');
+  print('==============================');
+
+  return FirebaseFirestore.instance
+      .collection('products')
+      .where('categoryId', isEqualTo: widget.categoryId)
+      .snapshots();
+}
 
   Future<void> addToCart(Map<String, dynamic> product) async {
     final user = FirebaseAuth.instance.currentUser;
@@ -64,7 +72,7 @@ class _SearchCategoriesState extends State<SearchCategories> {
         await cartItemRef.set({
           'productId': productId,
           'name': product['name'].toString(),
-          'image': product['image'].toString(),
+          'image': product['imageUrl'].toString(),
           'price': product['price'].toString(),
           'rating': product['rating'].toString(),
           'quantity': 1,
@@ -115,7 +123,7 @@ class _SearchCategoriesState extends State<SearchCategories> {
           .set({
             'productId': productId,
             'name': product['name'].toString(),
-            'image': product['image'].toString(),
+            'image': product['imageUrl'].toString(),
             'price': product['price'].toString(),
             'rating': product['rating'].toString(),
             'addedAt': FieldValue.serverTimestamp(),
@@ -350,16 +358,10 @@ class _SearchCategoriesState extends State<SearchCategories> {
                       return StreamBuilder<QuerySnapshot>(
                         stream: productsStream,
                         builder: (context, snapshot) {
-                          print("Searching category = '${widget.title}'");
-
                           if (snapshot.hasData) {
                             print(
                               "Products found = ${snapshot.data!.docs.length}",
                             );
-
-                            for (var doc in snapshot.data!.docs) {
-                              print(doc.data());
-                            }
                           }
 
                           if (snapshot.connectionState ==
@@ -422,14 +424,45 @@ class _SearchCategoriesState extends State<SearchCategories> {
                                           borderRadius: BorderRadius.circular(
                                             16.r,
                                           ),
-                                          child:Container(
-  height: 140.h,
-  width: double.infinity,
-  color: Colors.orange,
-  child: const Center(
-    child: Text("IMAGE"),
-  ),
-)
+                                          child: SizedBox(
+                                            height: 140.h,
+                                            width: double.infinity,
+                                            child: Image.network(
+                                              item['imageUrl']?.toString() ??
+                                                  '',
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (
+                                                context,
+                                                error,
+                                                stackTrace,
+                                              ) {
+                                                return Container(
+                                                  color: Colors.grey.shade200,
+                                                  child: const Center(
+                                                    child: Icon(
+                                                      Icons.image_not_supported,
+                                                      size: 40,
+                                                      color: Colors.grey,
+                                                    ),
+                                                  ),
+                                                );
+                                              },
+                                              loadingBuilder: (
+                                                context,
+                                                child,
+                                                loadingProgress,
+                                              ) {
+                                                if (loadingProgress == null) {
+                                                  return child;
+                                                }
+
+                                                return const Center(
+                                                  child:
+                                                      CircularProgressIndicator(),
+                                                );
+                                              },
+                                            ),
+                                          ),
                                         ),
 
                                         Positioned(
@@ -532,7 +565,7 @@ class _SearchCategoriesState extends State<SearchCategories> {
                                     SizedBox(height: 5.h),
 
                                     Text(
-                                      item['price'],
+                                      item['price'].toString(),
                                       style: TextStyle(
                                         fontWeight: FontWeight.w400,
                                         fontSize: 18.sp,
