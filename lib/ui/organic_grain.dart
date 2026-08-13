@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:pet_shop_project/ui/wish_list_page.dart';
 
 class OrganicGrain extends StatefulWidget {
-  const OrganicGrain({super.key});
+  final Map<String, dynamic> product;
+
+  const OrganicGrain({super.key, required this.product});
 
   @override
   State<OrganicGrain> createState() => _OrganicGrainState();
@@ -13,8 +16,7 @@ class OrganicGrain extends StatefulWidget {
 class _OrganicGrainState extends State<OrganicGrain> {
   bool isSelected = true;
   String selectedWeight = '2kg';
-  final String productId = 'ZtZgVFduAXq0feoW8RMK';
-
+  String get productId => widget.product['id'].toString();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -48,8 +50,91 @@ class _OrganicGrainState extends State<OrganicGrain> {
     return '${date.day}/${date.month}/${date.year}';
   }
 
+  Future<void> addToCart() async {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please login first')));
+
+      return;
+    }
+
+    try {
+      final product = widget.product;
+
+      final String productId = product['id'].toString();
+
+      final cartItemRef = FirebaseFirestore.instance
+          .collection('carts')
+          .doc(user.uid)
+          .collection('items')
+          .doc(productId);
+
+      final cartItem = await cartItemRef.get();
+
+      if (cartItem.exists) {
+        // Product already exists in cart
+        final data = cartItem.data();
+
+        final int currentQuantity = (data?['quantity'] ?? 0) as int;
+
+        await cartItemRef.update({'quantity': currentQuantity + 1});
+      } else {
+        // Add product for the first time
+        await cartItemRef.set({
+          'productId': productId,
+          'name': product['name']?.toString() ?? '',
+          'brand': product['brand']?.toString() ?? '',
+          'image': product['imageUrl']?.toString() ?? '',
+          'price': product['price'] ?? 0,
+          'quantity': 1,
+          'addedAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${product['name']} added to cart')),
+      );
+    } catch (e) {
+      debugPrint('ADD TO CART ERROR: $e');
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to add product to cart: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final product = widget.product;
+
+    final String name = product['name']?.toString() ?? '';
+    final String brand = product['brand']?.toString() ?? '';
+    final String image = product['imageUrl']?.toString() ?? '';
+
+    double price = 0.0;
+
+    if (product['price'] is num) {
+      price = (product['price'] as num).toDouble();
+    } else if (product['price'] is String) {
+      price =
+          double.tryParse(
+            product['price']
+                .toString()
+                .replaceAll('\$', '')
+                .replaceAll(',', '')
+                .trim(),
+          ) ??
+          0.0;
+    }
     return Scaffold(
       appBar: AppBar(
         leading: GestureDetector(
@@ -85,9 +170,18 @@ class _OrganicGrainState extends State<OrganicGrain> {
                     width: double.infinity,
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(12.r),
-                      child: Image.asset(
-                        'assets/OrganicGrain.png',
+                      child: Image.network(
+                        image,
                         fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            color: Colors.grey.shade200,
+                            child: const Icon(
+                              Icons.image_not_supported,
+                              color: Colors.grey,
+                            ),
+                          );
+                        },
                       ),
                     ),
                   ),
@@ -139,11 +233,11 @@ class _OrganicGrainState extends State<OrganicGrain> {
                           ),
                           child: Center(
                             child: Text(
-                              'Best Seller',
+                              brand,
                               style: TextStyle(
                                 fontWeight: FontWeight.w600,
-                                fontSize: 12.sp,
-                                color: Color(0xff006D76),
+                                fontSize: 14.sp,
+                                color: const Color(0xff57423D),
                               ),
                             ),
                           ),
@@ -151,7 +245,7 @@ class _OrganicGrainState extends State<OrganicGrain> {
                         Column(
                           children: [
                             Text(
-                              '\$34.99',
+                              '\$${price.toStringAsFixed(2)}',
                               style: TextStyle(
                                 fontWeight: FontWeight.w600,
                                 fontSize: 24.sp,
@@ -171,12 +265,14 @@ class _OrganicGrainState extends State<OrganicGrain> {
                       ],
                     ),
                     Text(
-                      'Organic Grain-Free \nKibble',
+                      name,
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 24.sp,
                         color: Color(0xff1B1C1C),
                       ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     Row(
                       children: [
@@ -528,7 +624,15 @@ class _OrganicGrainState extends State<OrganicGrain> {
                                 borderRadius: BorderRadius.circular(18.r),
                               ),
                             ),
-                            onPressed: () {},
+                            onPressed: () async {
+                              await addToCart();
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => WishListPage(),
+                                ),
+                              );
+                            },
                             icon: Icon(
                               Icons.shopping_cart_outlined,
                               color: Colors.white,

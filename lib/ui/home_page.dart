@@ -28,33 +28,37 @@ class _HomePageState extends State<HomePage> {
     return db.collection('categories').snapshots();
   }
 
-  final List<Map<String, String>> dogProducts = [
-    {
-      "image": "assets/Background.png",
-      "brand": "Kibble & Co",
-      "name": "Organic Dog Food",
-      "price": "\$24.99",
-    },
-    {
-      "image": "assets/toy.png",
-      "brand": "PlaySmart",
-      "name": "Interactive Bone",
-      "price": "\$18.50",
-    },
-    {
-      "image": "assets/Background (1).png",
-      "brand": "PurePurr",
-      "name": "Cat Wellness Kit",
-      "price": "\$32.00",
-    },
-    {
-      "image": "assets/Background (2).png",
-      "brand": "WildWings",
-      "name": "Modern Feeder",
-      "price": "\$45.00",
-    },
-  ];
-  Future<void> addToCart(Map<String, String> product) async {
+  Stream<QuerySnapshot> get productsStream {
+    return db.collection('products').snapshots();
+  }
+
+  // final List<Map<String, String>> dogProducts = [
+  //   {
+  //     "image": "assets/Background.png",
+  //     "brand": "Kibble & Co",
+  //     "name": "Organic Dog Food",
+  //     "price": "\$24.99",
+  //   },
+  //   {
+  //     "image": "assets/toy.png",
+  //     "brand": "PlaySmart",
+  //     "name": "Interactive Bone",
+  //     "price": "\$18.50",
+  //   },
+  //   {
+  //     "image": "assets/Background (1).png",
+  //     "brand": "PurePurr",
+  //     "name": "Cat Wellness Kit",
+  //     "price": "\$32.00",
+  //   },
+  //   {
+  //     "image": "assets/Background (2).png",
+  //     "brand": "WildWings",
+  //     "name": "Modern Feeder",
+  //     "price": "\$45.00",
+  //   },
+  // ];
+  Future<void> addToCart(Map<String, dynamic> product) async {
     final user = FirebaseAuth.instance.currentUser;
 
     if (user == null) {
@@ -67,10 +71,7 @@ class _HomePageState extends State<HomePage> {
     }
 
     try {
-      final productId = product['name']!
-          .toLowerCase()
-          .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
-          .replaceAll(RegExp(r'^_|_$'), '');
+      final productId = product['id'];
 
       final cartItemRef = FirebaseFirestore.instance
           .collection('carts')
@@ -78,23 +79,19 @@ class _HomePageState extends State<HomePage> {
           .collection('items')
           .doc(productId);
 
-      // Check if product already exists in cart
       final cartItem = await cartItemRef.get();
 
       if (cartItem.exists) {
-        // Get current quantity
-        final currentQuantity = cartItem.data()?['quantity'] ?? 0;
+        final currentQuantity = (cartItem.data()?['quantity'] ?? 0) as int;
 
-        // Increase quantity by 1
         await cartItemRef.update({'quantity': currentQuantity + 1});
       } else {
-        // Product doesn't exist, create it with quantity 1
         await cartItemRef.set({
           'productId': productId,
-          'name': product['name'],
-          'brand': product['brand'],
-          'image': product['image'],
-          'price': product['price'],
+          'name': product['name'] ?? '',
+          'brand': product['brand'] ?? '',
+          'image': product['imageUrl'] ?? '',
+          'price': product['price'] ?? 0,
           'quantity': 1,
           'addedAt': FieldValue.serverTimestamp(),
         });
@@ -116,7 +113,7 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  Future<bool> toggleWishlist(Map<String, String> product) async {
+  Future<bool> toggleWishlist(Map<String, dynamic> product) async {
     final user = FirebaseAuth.instance.currentUser;
 
     if (user == null) {
@@ -129,22 +126,19 @@ class _HomePageState extends State<HomePage> {
       return false;
     }
 
-    final productId = product['name']!
-        .toLowerCase()
-        .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
-        .replaceAll(RegExp(r'^_|_$'), '');
+    final String productId = product['id'].toString();
 
     final bool isCurrentlyWishlisted = wishlistedProducts.contains(productId);
 
     try {
+      final wishlistRef = FirebaseFirestore.instance
+          .collection('Wishlist')
+          .doc(user.uid)
+          .collection('items')
+          .doc(productId);
+
       if (isCurrentlyWishlisted) {
-        // Remove from wishlist
-        await FirebaseFirestore.instance
-            .collection('Wishlist')
-            .doc(user.uid)
-            .collection('items')
-            .doc(productId)
-            .delete();
+        await wishlistRef.delete();
 
         if (!mounted) return false;
 
@@ -158,20 +152,29 @@ class _HomePageState extends State<HomePage> {
 
         return false;
       } else {
-        // Add to wishlist
-        await FirebaseFirestore.instance
-            .collection('Wishlist')
-            .doc(user.uid)
-            .collection('items')
-            .doc(productId)
-            .set({
-              'productId': productId,
-              'name': product['name'],
-              'brand': product['brand'],
-              'image': product['image'],
-              'price': product['price'],
-              'addedAt': FieldValue.serverTimestamp(),
-            });
+        // Convert price safely to a number
+        final dynamic priceData = product['price'];
+
+        double price = 0.0;
+
+        if (priceData is num) {
+          price = priceData.toDouble();
+        } else if (priceData is String) {
+          price =
+              double.tryParse(
+                priceData.replaceAll('\$', '').replaceAll(',', '').trim(),
+              ) ??
+              0.0;
+        }
+
+        await wishlistRef.set({
+          'productId': productId,
+          'name': product['name']?.toString() ?? '',
+          'brand': product['brand']?.toString() ?? '',
+          'image': product['imageUrl']?.toString() ?? '',
+          'price': price,
+          'addedAt': FieldValue.serverTimestamp(),
+        });
 
         if (!mounted) return false;
 
@@ -432,356 +435,354 @@ class _HomePageState extends State<HomePage> {
 
                         SizedBox(height: 5.h),
 
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              "Trending Now",
-                              style: TextStyle(
-                                fontSize: 14.sp,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            TextButton(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder:
-                                        (context) => ViewAllProductsList(
-                                          products: dogProducts,
-                                        ),
-                                  ),
-                                );
-                              },
-                              child: Text(
-                                'View All',
-                                style: TextStyle(
-                                  fontSize: 12.sp,
-                                  color: Color(0xffA73927),
+                        // Row(
+                        //   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        //   children: [
+                        //     Text(
+                        //       "Trending Now",
+                        //       style: TextStyle(
+                        //         fontSize: 14.sp,
+                        //         fontWeight: FontWeight.bold,
+                        //       ),
+                        //     ),
+                        //     TextButton(
+                        //       onPressed: () {
+                        //         final products =
+                        //             productSnapshot.data!.docs.map((doc) {
+                        //               final data =
+                        //                   doc.data() as Map<String, dynamic>;
+
+                        //               return {
+                        //                 'id': doc.id,
+                        //                 'name': data['name'] ?? '',
+                        //                 'brand': data['brand'] ?? '',
+                        //                 'imageUrl': data['imageUrl'] ?? '',
+                        //                 'price': data['price'] ?? 0,
+                        //                 'rating': data['rating'] ?? 0,
+                        //                 'category': data['category'] ?? '',
+                        //                 'categoryId': data['categoryId'] ?? '',
+                        //               };
+                        //             }).toList();
+
+                        //         Navigator.push(
+                        //           context,
+                        //           MaterialPageRoute(
+                        //             builder:
+                        //                 (context) => ViewAllProductsList(
+                        //                   products: products,
+                        //                 ),
+                        //           ),
+                        //         );
+                        //       },
+                        //       child: Text(
+                        //         'View All',
+                        //         style: TextStyle(
+                        //           fontSize: 12.sp,
+                        //           color: const Color(0xffA73927),
+                        //         ),
+                        //       ),
+                        //     ),
+                        //   ],
+                        // ),
+                        StreamBuilder<QuerySnapshot>(
+                          stream: productsStream,
+                          builder: (context, productSnapshot) {
+                            if (productSnapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return const Center(
+                                child: CircularProgressIndicator(),
+                              );
+                            }
+
+                            if (productSnapshot.hasError) {
+                              return Center(
+                                child: Text(
+                                  'Error loading products: ${productSnapshot.error}',
                                 ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        GridView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: dogProducts.length,
-                          gridDelegate:
-                              SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 2,
-                                crossAxisSpacing: 15,
-                                mainAxisSpacing: 15.h,
-                                childAspectRatio: 0.58,
-                              ),
-                          itemBuilder: (context, index) {
-                            final product = dogProducts[index];
-                            final productId = product['name']!
-                                .toLowerCase()
-                                .replaceAll(' ', '_');
+                              );
+                            }
 
-                            // Check if THIS product is wishlisted
-                            final isWishlisted = wishlistedProducts.contains(
-                              productId,
-                            );
-                            return Card(
-                              elevation: 3,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(15.r),
-                              ),
-                              child: Padding(
-                                padding: EdgeInsets.all(10.w),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.center,
+                            if (!productSnapshot.hasData ||
+                                productSnapshot.data!.docs.isEmpty) {
+                              return const Center(
+                                child: Text('No products found'),
+                              );
+                            }
+
+                            final productDocs = productSnapshot.data!.docs;
+
+                            // Convert Firestore documents to List<Map<String, dynamic>>
+                            final products =
+                                productDocs.map((doc) {
+                                  final data =
+                                      doc.data() as Map<String, dynamic>;
+
+                                  return <String, dynamic>{
+                                    'id': doc.id,
+                                    'name': data['name'] ?? '',
+                                    'brand': data['brand'] ?? '',
+                                    'imageUrl': data['imageUrl'] ?? '',
+                                    'price': data['price'] ?? 0,
+                                    'rating': data['rating'] ?? 0,
+                                    'category': data['category'] ?? '',
+                                    'categoryId': data['categoryId'] ?? '',
+                                  };
+                                }).toList();
+
+                            return Column(
+                              children: [
+                                // =========================
+                                // TRENDING NOW HEADER
+                                // =========================
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
-                                    SizedBox(
-                                      height: 120.h,
-                                      width: double.infinity,
-                                      child: Stack(
-                                        children: [
-                                          // PRODUCT IMAGE
-                                          Positioned.fill(
-                                            child: ClipRRect(
-                                              borderRadius:
-                                                  BorderRadius.circular(15.r),
-                                              child: GestureDetector(
-                                                onTap: () {
-                                                  if (index == 0) {
-                                                    Navigator.push(
-                                                      context,
-                                                      MaterialPageRoute(
-                                                        builder:
-                                                            (context) =>
-                                                                OrganicGrain(),
-                                                      ),
-                                                    );
-                                                  }
-                                                },
-                                                child: Image.asset(
-                                                  product["image"]!,
-                                                  fit: BoxFit.cover,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-
-                                          // WISHLIST HEART BUTTON
-                                          // WISHLIST HEART BUTTON
-                                          Positioned(
-                                            top: 8.h,
-                                            right: 8.w,
-                                            child: Container(
-                                              decoration: BoxDecoration(
-                                                color: Colors.white,
-                                                shape: BoxShape.circle,
-                                                boxShadow: [
-                                                  BoxShadow(
-                                                    color: Colors.black
-                                                        .withOpacity(0.15),
-                                                    blurRadius: 5,
-                                                    offset: const Offset(0, 2),
-                                                  ),
-                                                ],
-                                              ),
-                                              child: IconButton(
-                                                padding: EdgeInsets.zero,
-                                                constraints: BoxConstraints(
-                                                  minWidth: 30.w,
-                                                  minHeight: 30.h,
-                                                ),
-                                                onPressed: () async {
-                                                  final user =
-                                                      FirebaseAuth
-                                                          .instance
-                                                          .currentUser;
-
-                                                  if (user == null) {
-                                                    if (!context.mounted)
-                                                      return;
-
-                                                    ScaffoldMessenger.of(
-                                                      context,
-                                                    ).showSnackBar(
-                                                      const SnackBar(
-                                                        content: Text(
-                                                          'Please login first',
-                                                        ),
-                                                      ),
-                                                    );
-
-                                                    return;
-                                                  }
-
-                                                  final productId =
-                                                      product['name']!
-                                                          .toLowerCase()
-                                                          .replaceAll(
-                                                            RegExp(
-                                                              r'[^a-z0-9]+',
-                                                            ),
-                                                            '_',
-                                                          )
-                                                          .replaceAll(
-                                                            RegExp(r'^_|_$'),
-                                                            '',
-                                                          );
-
-                                                  final isCurrentlyWishlisted =
-                                                      wishlistedProducts
-                                                          .contains(productId);
-
-                                                  // --------------------------------------------------
-                                                  // REMOVE FROM WISHLIST
-                                                  // --------------------------------------------------
-
-                                                  if (isCurrentlyWishlisted) {
-                                                    try {
-                                                      await FirebaseFirestore
-                                                          .instance
-                                                          .collection(
-                                                            'Wishlist',
-                                                          )
-                                                          .doc(user.uid)
-                                                          .collection('items')
-                                                          .doc(productId)
-                                                          .delete();
-
-                                                      if (!context.mounted)
-                                                        return;
-
-                                                      setState(() {
-                                                        wishlistedProducts
-                                                            .remove(productId);
-                                                      });
-
-                                                      ScaffoldMessenger.of(
-                                                        context,
-                                                      ).showSnackBar(
-                                                        SnackBar(
-                                                          content: Text(
-                                                            '${product['name']} removed from wishlist',
-                                                          ),
-                                                        ),
-                                                      );
-                                                    } catch (e) {
-                                                      debugPrint(
-                                                        'REMOVE WISHLIST ERROR: $e',
-                                                      );
-                                                    }
-
-                                                    return;
-                                                  }
-
-                                                  // --------------------------------------------------
-                                                  // ADD TO WISHLIST
-                                                  // --------------------------------------------------
-
-                                                  try {
-                                                    await FirebaseFirestore
-                                                        .instance
-                                                        .collection('Wishlist')
-                                                        .doc(user.uid)
-                                                        .collection('items')
-                                                        .doc(productId)
-                                                        .set({
-                                                          'productId':
-                                                              productId,
-                                                          'name':
-                                                              product['name'],
-                                                          'brand':
-                                                              product['brand'],
-                                                          'image':
-                                                              product['image'],
-                                                          'price':
-                                                              product['price'],
-                                                          'addedAt':
-                                                              FieldValue.serverTimestamp(),
-                                                        });
-
-                                                    if (!context.mounted)
-                                                      return;
-
-                                                    setState(() {
-                                                      wishlistedProducts.add(
-                                                        productId,
-                                                      );
-                                                    });
-
-                                                    // Show message
-                                                    ScaffoldMessenger.of(
-                                                      context,
-                                                    ).showSnackBar(
-                                                      SnackBar(
-                                                        content: Text(
-                                                          '${product['name']} added to wishlist',
-                                                        ),
-                                                      ),
-                                                    );
-
-                                                    // --------------------------------------------------
-                                                    // GO TO WISHLIST TAB
-                                                    // --------------------------------------------------
-
-                                                    widget.onGoToWishlist
-                                                        ?.call();
-                                                  } catch (e) {
-                                                    debugPrint(
-                                                      'ADD WISHLIST ERROR: $e',
-                                                    );
-
-                                                    if (!context.mounted)
-                                                      return;
-
-                                                    ScaffoldMessenger.of(
-                                                      context,
-                                                    ).showSnackBar(
-                                                      SnackBar(
-                                                        content: Text(
-                                                          'Failed to add wishlist: $e',
-                                                        ),
-                                                      ),
-                                                    );
-                                                  }
-                                                },
-                                                icon: Icon(
-                                                  isWishlisted
-                                                      ? Icons.favorite
-                                                      : Icons.favorite_border,
-                                                  color:
-                                                      isWishlisted
-                                                          ? Colors.red
-                                                          : const Color(
-                                                            0xffA73927,
-                                                          ),
-                                                  size: 22.sp,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    SizedBox(height: 10.h),
                                     Text(
-                                      product["brand"]!,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        fontSize: 12.sp,
-                                        color: Color(0xff57423D),
-                                      ),
-                                    ),
-                                    SizedBox(height: 10.h),
-
-                                    Text(
-                                      product["name"]!,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
+                                      "Trending Now",
                                       style: TextStyle(
                                         fontSize: 14.sp,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-
-                                    SizedBox(height: 5.h),
-
-                                    Text(
-                                      product["price"]!,
-                                      style: TextStyle(
-                                        color: Colors.red,
                                         fontWeight: FontWeight.bold,
-                                        fontSize: 15.sp,
                                       ),
                                     ),
-                                    SizedBox(
-                                      width: double.infinity,
-                                      child: ElevatedButton(
-                                        onPressed: () async {
-                                          await addToCart(product);
 
-                                          if (context.mounted) {
-                                            widget.onGoToWishlist?.call();
-                                          }
-                                        },
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: const Color(
-                                            0xff006971,
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder:
+                                                (context) =>
+                                                    ViewAllProductsList(
+                                                      products: products,
+                                                    ),
                                           ),
-                                        ),
-                                        child: Text(
-                                          "Add to Cart",
-                                          style: TextStyle(
-                                            fontSize: 12.sp,
-                                            fontWeight: FontWeight.w500,
-                                            color: Colors.white,
-                                          ),
+                                        );
+                                      },
+                                      child: Text(
+                                        'View All',
+                                        style: TextStyle(
+                                          fontSize: 12.sp,
+                                          color: const Color(0xffA73927),
                                         ),
                                       ),
                                     ),
                                   ],
                                 ),
-                              ),
+
+                                // =========================
+                                // PRODUCTS GRID
+                                // =========================
+                                GridView.builder(
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  itemCount: productDocs.length,
+                                  gridDelegate:
+                                      SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: 2,
+                                        crossAxisSpacing: 15,
+                                        mainAxisSpacing: 15.h,
+                                        childAspectRatio: 0.58,
+                                      ),
+                                  itemBuilder: (context, index) {
+                                    final product = products[index];
+
+                                    final productId = product['id'].toString();
+
+                                    final isWishlisted = wishlistedProducts
+                                        .contains(productId);
+
+                                    return GestureDetector(
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder:
+                                                (context) => OrganicGrain(
+                                                  product: product,
+                                                ),
+                                          ),
+                                        );
+                                      },
+                                      child: Card(
+                                        elevation: 3,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            15.r,
+                                          ),
+                                        ),
+                                        child: Padding(
+                                          padding: EdgeInsets.all(10.w),
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.center,
+                                            children: [
+                                              // IMAGE
+                                              SizedBox(
+                                                height: 120.h,
+                                                width: double.infinity,
+                                                child: Stack(
+                                                  children: [
+                                                    Positioned.fill(
+                                                      child: ClipRRect(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              15.r,
+                                                            ),
+                                                        child: Image.network(
+                                                          product['imageUrl'] ??
+                                                              '',
+                                                          fit: BoxFit.cover,
+                                                          errorBuilder: (
+                                                            context,
+                                                            error,
+                                                            stackTrace,
+                                                          ) {
+                                                            return Container(
+                                                              color:
+                                                                  Colors
+                                                                      .grey
+                                                                      .shade200,
+                                                              child: const Icon(
+                                                                Icons
+                                                                    .image_not_supported,
+                                                                color:
+                                                                    Colors.grey,
+                                                              ),
+                                                            );
+                                                          },
+                                                        ),
+                                                      ),
+                                                    ),
+
+                                                    // WISHLIST
+                                                    Positioned(
+                                                      top: 8.h,
+                                                      right: 8.w,
+                                                      child: Container(
+                                                        decoration:
+                                                            BoxDecoration(
+                                                              color:
+                                                                  Colors.white,
+                                                              shape:
+                                                                  BoxShape
+                                                                      .circle,
+                                                            ),
+                                                        child: IconButton(
+                                                          padding:
+                                                              EdgeInsets.zero,
+                                                          constraints:
+                                                              BoxConstraints(
+                                                                minWidth: 30.w,
+                                                                minHeight: 30.h,
+                                                              ),
+                                                          onPressed: () async {
+                                                            await toggleWishlist(
+                                                              product,
+                                                            );
+                                                          },
+                                                          icon: Icon(
+                                                            isWishlisted
+                                                                ? Icons.favorite
+                                                                : Icons
+                                                                    .favorite_border,
+                                                            color:
+                                                                isWishlisted
+                                                                    ? Colors.red
+                                                                    : const Color(
+                                                                      0xffA73927,
+                                                                    ),
+                                                            size: 22.sp,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+
+                                              SizedBox(height: 10.h),
+
+                                              // BRAND
+                                              Text(
+                                                product['brand']
+                                                        .toString()
+                                                        .isEmpty
+                                                    ? product['category']
+                                                        .toString()
+                                                    : product['brand']
+                                                        .toString(),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: TextStyle(
+                                                  fontSize: 12.sp,
+                                                  color: const Color(
+                                                    0xff57423D,
+                                                  ),
+                                                ),
+                                              ),
+
+                                              SizedBox(height: 8.h),
+
+                                              // NAME
+                                              Text(
+                                                product['name'].toString(),
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                                textAlign: TextAlign.center,
+                                                style: TextStyle(
+                                                  fontSize: 14.sp,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+
+                                              SizedBox(height: 5.h),
+
+                                              // PRICE
+                                              Text(
+                                                '\$${(product['price'] as num).toDouble().toStringAsFixed(2)}',
+                                                style: TextStyle(
+                                                  color: Colors.red,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 15.sp,
+                                                ),
+                                              ),
+
+                                              const Spacer(),
+
+                                              // ADD TO CART
+                                              SizedBox(
+                                                width: double.infinity,
+                                                child: ElevatedButton(
+                                                  onPressed: () async {
+                                                    await addToCart(product);
+                                                  },
+                                                  style:
+                                                      ElevatedButton.styleFrom(
+                                                        backgroundColor:
+                                                            const Color(
+                                                              0xff006971,
+                                                            ),
+                                                      ),
+                                                  child: Text(
+                                                    'Add to Cart',
+                                                    style: TextStyle(
+                                                      fontSize: 12.sp,
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                      color: Colors.white,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
                             );
                           },
                         ),

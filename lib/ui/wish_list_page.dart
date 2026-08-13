@@ -203,15 +203,8 @@ class CartTab extends StatelessWidget {
         for (final doc in cartItems) {
           final data = doc.data() as Map<String, dynamic>;
 
-          final priceString = data['price'] ?? '\$0';
-
-          final price =
-              double.tryParse(
-                priceString.toString().replaceAll('\$', '').replaceAll(',', ''),
-              ) ??
-              0;
-
-          final quantity = data['quantity'] ?? 1;
+          final price = (data['price'] as num?)?.toDouble() ?? 0.0;
+          final quantity = (data['quantity'] as num?)?.toInt() ?? 1;
 
           subtotal += price * quantity;
         }
@@ -231,11 +224,12 @@ class CartTab extends StatelessWidget {
                     return CartItem(
                       productId: doc.id,
                       userId: userId,
-                      image: data['image'] ?? '',
-                      name: data['name'] ?? '',
-                      brand: data['brand'] ?? '',
-                      price: data['price'] ?? '\$0',
-                      quantity: data['quantity'] ?? 1,
+                      image: data['image']?.toString() ?? '',
+                      name: data['name']?.toString() ?? '',
+                      brand: data['brand']?.toString() ?? '',
+                      price:
+                          '\$${(data['price'] as num?)?.toDouble().toStringAsFixed(2) ?? '0.00'}',
+                      quantity: (data['quantity'] as num?)?.toInt() ?? 1,
                     );
                   },
                 ),
@@ -634,13 +628,27 @@ class WishListTab extends StatelessWidget {
 
             final data = doc.data() as Map<String, dynamic>;
 
+            final dynamic priceData = data['price'];
+
+            double price = 0.0;
+
+            if (priceData is num) {
+              price = priceData.toDouble();
+            } else if (priceData is String) {
+              price =
+                  double.tryParse(
+                    priceData.replaceAll('\$', '').replaceAll(',', '').trim(),
+                  ) ??
+                  0.0;
+            }
+
             return WishlistItem(
               productId: doc.id,
               userId: user.uid,
-              image: data['image'] ?? '',
-              name: data['name'] ?? '',
-              brand: data['brand'] ?? '',
-              price: data['price'] ?? '\$0',
+              image: data['image']?.toString() ?? '',
+              name: data['name']?.toString() ?? '',
+              brand: data['brand']?.toString() ?? '',
+              price: '\$${price.toStringAsFixed(2)}',
             );
           },
         );
