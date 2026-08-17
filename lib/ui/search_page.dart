@@ -17,29 +17,31 @@ class _SearchPageState extends State<SearchPage> {
   ];
   final List<Map<String, dynamic>> categories = [
     {
+      'id': 'STQGoqVwl5nfbYRGzOPm',
       'name': 'Dogs',
       'bgcolor': const Color.fromARGB(54, 242, 112, 89),
       'icon': Icons.pets,
       'iconcolor': const Color(0xffF27059),
     },
     {
+      'id': 'lmieR6OK2MCUK4eiTnps',
       'name': 'Cats',
       'bgcolor': const Color.fromARGB(53, 0, 108, 118),
       'icon': Icons.cruelty_free,
       'iconcolor': const Color(0xff006D76),
     },
-    {
-      'name': 'Fish',
-      'bgcolor': const Color.fromARGB(50, 72, 71, 66),
-      'icon': Icons.set_meal,
-      'iconcolor': const Color(0xff484742),
-    },
-    {
-      'name': 'Birds',
-      'bgcolor': const Color.fromARGB(30, 242, 112, 89),
-      'icon': Icons.flutter_dash,
-      'iconcolor': const Color(0xff57423D),
-    },
+    // {
+    //   'name': 'Fish',
+    //   'bgcolor': const Color.fromARGB(50, 72, 71, 66),
+    //   'icon': Icons.set_meal,
+    //   'iconcolor': const Color(0xff484742),
+    // },
+    // {
+    //   'name': 'Birds',
+    //   'bgcolor': const Color.fromARGB(30, 242, 112, 89),
+    //   'icon': Icons.flutter_dash,
+    //   'iconcolor': const Color(0xff57423D),
+    // },
   ];
   final List<Map<String, dynamic>> trendingSearch = [
     {'title': 'Organic Puppy Food', 'subtitle': '1.2k searches today'},
@@ -178,48 +180,50 @@ class _SearchPageState extends State<SearchPage> {
                 SizedBox(height: 20.h),
 
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: List.generate(categories.length, (index) {
                     final item = categories[index];
-
-                    return Column(
-                      children: [
-                        Material(
-                          color: item['bgcolor'],
-                          shape: const CircleBorder(),
-                          child: InkWell(
-                            customBorder: const CircleBorder(),
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder:
-                                      (context) => SearchCategories(
-                                        title: "${item['name']} Essentials",
-                                        categoryId: 'categoryId',
-                                      ),
+                
+                    return Padding(
+                      padding:  EdgeInsets.only(right: 20.w),
+                      child: Column(
+                        children: [
+                          Material(
+                            color: item['bgcolor'],
+                            shape: const CircleBorder(),
+                            child: InkWell(
+                              customBorder: const CircleBorder(),
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder:
+                                        (context) => SearchCategories(
+                                          title: "${item['name']} Essentials",
+                                          categoryId: item['id'],
+                                        ),
+                                  ),
+                                );
+                              },
+                              child: Padding(
+                                padding: EdgeInsets.all(18.w),
+                                child: Icon(
+                                  item['icon'],
+                                  color: item['iconcolor'],
+                                  size: 30.sp,
                                 ),
-                              );
-                            },
-                            child: Padding(
-                              padding: EdgeInsets.all(18.w),
-                              child: Icon(
-                                item['icon'],
-                                color: item['iconcolor'],
-                                size: 30.sp,
                               ),
                             ),
                           ),
-                        ),
-                        SizedBox(height: 8.h),
-                        Text(
-                          item["name"],
-                          style: TextStyle(
-                            fontSize: 14.sp,
-                            fontWeight: FontWeight.w500,
+                          SizedBox(height: 8.h),
+                          Text(
+                            item["name"],
+                            style: TextStyle(
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     );
                   }),
                 ),

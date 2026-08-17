@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:pet_shop_project/ui/order_history_page.dart';
+import 'package:pet_shop_project/ui/payment_methods_page.dart';
+import 'package:pet_shop_project/ui/shipping_address_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -59,6 +62,286 @@ class _ProfilePageState extends State<ProfilePage> {
       });
     }
   }
+  Future<void> _showEditProfileDialog() async {
+  final user = _auth.currentUser;
+
+  if (user == null) {
+    return;
+  }
+
+  final nameController = TextEditingController(
+    text: userData?['name']?.toString() ?? '',
+  );
+
+  final phoneController = TextEditingController(
+    text: userData?['phone']?.toString() ?? '',
+  );
+
+  final addressController = TextEditingController(
+    text: userData?['address']?.toString() ?? '',
+  );
+
+  await showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.white,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(
+        top: Radius.circular(25.r),
+      ),
+    ),
+    builder: (context) {
+      return Padding(
+        padding: EdgeInsets.only(
+          left: 25.w,
+          right: 25.w,
+          top: 20.h,
+          bottom:
+              MediaQuery.of(context).viewInsets.bottom + 20.h,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // TOP HANDLE
+              Center(
+                child: Container(
+                  width: 45.w,
+                  height: 5.h,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(10.r),
+                  ),
+                ),
+              ),
+
+              SizedBox(height: 20.h),
+
+              // TITLE
+              Row(
+                children: [
+                  Icon(
+                    Icons.person_outline,
+                    color: const Color(0xffA73927),
+                    size: 25.sp,
+                  ),
+                  SizedBox(width: 10.w),
+                  Text(
+                    'Edit Profile',
+                    style: TextStyle(
+                      fontSize: 21.sp,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+
+              SizedBox(height: 25.h),
+
+              // NAME
+              TextField(
+                controller: nameController,
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(
+                    Icons.person_outline,
+                    color: Color(0xffA73927),
+                  ),
+                  labelText: 'Full Name',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14.r),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14.r),
+                    borderSide: const BorderSide(
+                      color: Color(0xffA73927),
+                    ),
+                  ),
+                ),
+              ),
+
+              SizedBox(height: 15.h),
+
+              // EMAIL - READ ONLY
+              TextField(
+                controller: TextEditingController(
+                  text: user.email ?? '',
+                ),
+                readOnly: true,
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(
+                    Icons.email_outlined,
+                    color: Colors.grey,
+                  ),
+                  labelText: 'Email',
+                  suffixIcon: const Icon(
+                    Icons.lock_outline,
+                    color: Colors.grey,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14.r),
+                  ),
+                ),
+              ),
+
+              SizedBox(height: 15.h),
+
+              // PHONE
+              TextField(
+                controller: phoneController,
+                keyboardType: TextInputType.phone,
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(
+                    Icons.phone_outlined,
+                    color: Color(0xffA73927),
+                  ),
+                  labelText: 'Phone Number',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14.r),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14.r),
+                    borderSide: const BorderSide(
+                      color: Color(0xffA73927),
+                    ),
+                  ),
+                ),
+              ),
+
+              SizedBox(height: 15.h),
+
+              // ADDRESS
+              TextField(
+                controller: addressController,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(
+                    Icons.home_outlined,
+                    color: Color(0xffA73927),
+                  ),
+                  labelText: 'Address',
+                  alignLabelWithHint: true,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14.r),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14.r),
+                    borderSide: const BorderSide(
+                      color: Color(0xffA73927),
+                    ),
+                  ),
+                ),
+              ),
+
+              SizedBox(height: 25.h),
+
+              // SAVE BUTTON
+              SizedBox(
+                width: double.infinity,
+                height: 52.h,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    final name =
+                        nameController.text.trim();
+
+                    final phone =
+                        phoneController.text.trim();
+
+                    final address =
+                        addressController.text.trim();
+
+                    if (name.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Please enter your name',
+                          ),
+                        ),
+                      );
+                      return;
+                    }
+
+                    try {
+                      await _firestore
+                          .collection('users')
+                          .doc(user.uid)
+                          .update({
+                        'name': name,
+                        'phone': phone,
+                        'address': address,
+                      });
+
+                      // Update local data immediately
+                      setState(() {
+                        userData = {
+                          ...?userData,
+                          'name': name,
+                          'phone': phone,
+                          'address': address,
+                        };
+                      });
+
+                      if (context.mounted) {
+                        Navigator.pop(context);
+
+                        ScaffoldMessenger.of(context)
+                            .showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Profile updated successfully',
+                            ),
+                            backgroundColor:
+                                Color(0xff006971),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      debugPrint(
+                        'PROFILE UPDATE ERROR: $e',
+                      );
+
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context)
+                            .showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Failed to update profile: $e',
+                            ),
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor:
+                        const Color(0xffA73927),
+                    shape: RoundedRectangleBorder(
+                      borderRadius:
+                          BorderRadius.circular(15.r),
+                    ),
+                  ),
+                  child: Text(
+                    'Save Changes',
+                    style: TextStyle(
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+
+              SizedBox(height: 10.h),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+
+  nameController.dispose();
+  phoneController.dispose();
+  addressController.dispose();
+}
 
   @override
   Widget build(BuildContext context) {
@@ -142,23 +425,45 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                 ),
                 SizedBox(height: 20.h),
-                Text(
-                  userData?['name'] ?? 'No name',
+              Row(
+  mainAxisAlignment: MainAxisAlignment.center,
+  children: [
+    Flexible(
+      child: Text(
+        userData?['name'] ?? 'No name',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontWeight: FontWeight.w600,
+          fontSize: 24.sp,
+          color: const Color(0xff1B1C1C),
+        ),
+      ),
+    ),
 
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 24.sp,
-                    color: Color(0xff1B1C1C),
-                  ),
-                ),
-                Text(
-                  userData?['address'] ?? 'No address',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w400,
-                    fontSize: 14.sp,
-                    color: Color(0xff57423D),
-                  ),
-                ),
+    SizedBox(width: 8.w),
+
+    IconButton(
+      onPressed: () {
+        _showEditProfileDialog();
+      },
+      icon: Icon(
+        Icons.edit_outlined,
+        color: const Color(0xff006971),
+        size: 22.sp,
+      ),
+    ),
+  ],
+),
+
+Text(
+  userData?['address'] ?? 'No address',
+  textAlign: TextAlign.center,
+  style: TextStyle(
+    fontWeight: FontWeight.w400,
+    fontSize: 14.sp,
+    color: const Color(0xff57423D),
+  ),
+),
                 SizedBox(height: 45.h),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -337,16 +642,43 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                   child: Column(
                     children: [
-                      profileTile(icon: Icons.history, title: 'Order History'),
+                      profileTile(
+                        icon: Icons.history,
+                        title: 'Order History',
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => OrderHistoryPage(),
+                            ),
+                          );
+                        },
+                      ),
                       Divider(color: const Color.fromARGB(73, 158, 158, 158)),
                       profileTile(
                         icon: Icons.payment_outlined,
                         title: 'Payment Methods',
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const PaymentMethodsPage(),
+                            ),
+                          );
+                        },
                       ),
                       Divider(color: const Color.fromARGB(73, 158, 158, 158)),
                       profileTile(
                         icon: Icons.local_shipping_outlined,
                         title: 'Shipping Addresses',
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ShippingAddressPage(),
+                            ),
+                          );
+                        },
                       ),
                       Divider(color: const Color.fromARGB(73, 158, 158, 158)),
                       profileTile(
@@ -396,19 +728,23 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget profileTile({required IconData icon, required String title}) {
+  Widget profileTile({
+    required IconData icon,
+    required String title,
+    VoidCallback? onTap,
+  }) {
     return ListTile(
-      leading: Icon(icon, color: Color(0xffA73927), size: 22.sp),
+      leading: Icon(icon, color: const Color(0xffA73927), size: 22.sp),
       title: Text(
         title,
         style: TextStyle(
           fontWeight: FontWeight.w400,
           fontSize: 16.sp,
-          color: Color(0xff1B1C1C),
+          color: const Color(0xff1B1C1C),
         ),
       ),
-      trailing: Icon(Icons.arrow_forward_ios_sharp, color: Colors.grey),
-      onTap: () {},
+      trailing: const Icon(Icons.arrow_forward_ios_sharp, color: Colors.grey),
+      onTap: onTap,
     );
   }
 }

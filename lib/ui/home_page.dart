@@ -21,6 +21,9 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int selectedIndex = 0;
   final Set<String> wishlistedProducts = {};
+  final TextEditingController searchController = TextEditingController();
+
+  String searchQuery = '';
 
   final FirebaseFirestore db = FirebaseFirestore.instance;
 
@@ -207,6 +210,12 @@ class _HomePageState extends State<HomePage> {
     loadWishlist();
   }
 
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
+  }
+
   Future<void> loadWishlist() async {
     final user = FirebaseAuth.instance.currentUser;
 
@@ -320,12 +329,45 @@ class _HomePageState extends State<HomePage> {
                       child: Padding(
                         padding: EdgeInsets.only(bottom: 10.h, left: 15.w),
                         child: TextField(
+                          controller: searchController,
                           keyboardType: TextInputType.text,
+
+                          onChanged: (value) {
+                            setState(() {
+                              searchQuery = value.trim().toLowerCase();
+                            });
+                          },
+
                           decoration: InputDecoration(
                             hintText: 'Search for treats, toys, or food...',
                             hintStyle: TextStyle(fontSize: 12.sp),
-                            prefix: Icon(Icons.search, color: Colors.grey),
+
+                            prefixIcon: const Icon(
+                              Icons.search,
+                              color: Colors.grey,
+                            ),
+
+                            suffixIcon:
+                                searchQuery.isNotEmpty
+                                    ? IconButton(
+                                      icon: const Icon(
+                                        Icons.clear,
+                                        color: Colors.grey,
+                                      ),
+                                      onPressed: () {
+                                        searchController.clear();
+
+                                        setState(() {
+                                          searchQuery = '';
+                                        });
+                                      },
+                                    )
+                                    : null,
+
                             border: InputBorder.none,
+                            contentPadding: EdgeInsets.symmetric(
+                              vertical: 10.h,
+                            ),
                           ),
                         ),
                       ),
@@ -512,7 +554,7 @@ class _HomePageState extends State<HomePage> {
                             final productDocs = productSnapshot.data!.docs;
 
                             // Convert Firestore documents to List<Map<String, dynamic>>
-                            final products =
+                            final allProducts =
                                 productDocs.map((doc) {
                                   final data =
                                       doc.data() as Map<String, dynamic>;
@@ -528,6 +570,22 @@ class _HomePageState extends State<HomePage> {
                                     'categoryId': data['categoryId'] ?? '',
                                   };
                                 }).toList();
+
+                            // =====================================================
+                            // SEARCH PRODUCTS
+                            // =====================================================
+
+                            final products =
+                                searchQuery.isEmpty
+                                    ? allProducts
+                                    : allProducts.where((product) {
+                                      final name =
+                                          product['name']
+                                              .toString()
+                                              .toLowerCase();
+
+                                      return name.contains(searchQuery);
+                                    }).toList();
 
                             return Column(
                               children: [
@@ -576,7 +634,7 @@ class _HomePageState extends State<HomePage> {
                                 GridView.builder(
                                   shrinkWrap: true,
                                   physics: const NeverScrollableScrollPhysics(),
-                                  itemCount: productDocs.length,
+                                  itemCount: products.length,
                                   gridDelegate:
                                       SliverGridDelegateWithFixedCrossAxisCount(
                                         crossAxisCount: 2,

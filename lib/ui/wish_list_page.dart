@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:pet_shop_project/ui/checkout_page.dart';
 
 class WishListPage extends StatefulWidget {
   const WishListPage({super.key});
@@ -289,7 +290,12 @@ class CartTab extends StatelessWidget {
                 width: 300.w,
                 height: 55.h,
                 child: ElevatedButton(
-                  onPressed: () {},
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => CheckoutPage()),
+                    );
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xffA73927),
                     shape: RoundedRectangleBorder(
