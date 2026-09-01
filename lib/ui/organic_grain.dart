@@ -317,59 +317,73 @@ class _OrganicGrainState extends State<OrganicGrain> {
                     SizedBox(height: 30.h),
                     Row(
                       children: [
-                        Container(
-                          height: 90.h,
-                          width: 170.w,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(16.r),
-                            color: Color(0xffEAE7E7),
-                            border: Border.all(color: Color(0xff3C280008)),
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.eco_outlined,
-                                color: Color(0xff006971),
-                                size: 26.sp,
+                        Expanded(
+                          child: Container(
+                            height: 90.h,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(16.r),
+                              color: const Color(0xffEAE7E7),
+                              border: Border.all(
+                                color: const Color(0xff3C280008),
                               ),
-                              Text(
-                                '100% Organic',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 12.sp,
-                                  color: Color(0xff1B1C1C),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.eco_outlined,
+                                  color: const Color(0xff006971),
+                                  size: 26.sp,
                                 ),
-                              ),
-                            ],
+                                SizedBox(height: 4.h),
+                                Text(
+                                  '100% Organic',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12.sp,
+                                    color: const Color(0xff1B1C1C),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
+
                         SizedBox(width: 10.w),
-                        Container(
-                          height: 90.h,
-                          width: 170.w,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(16.r),
-                            color: Color(0xffEAE7E7),
-                            border: Border.all(color: Color(0xff3C280008)),
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.restaurant,
-                                color: Color(0xff006971),
-                                size: 26.sp,
+
+                        Expanded(
+                          child: Container(
+                            height: 90.h,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(16.r),
+                              color: const Color(0xffEAE7E7),
+                              border: Border.all(
+                                color: const Color(0xff3C280008),
                               ),
-                              Text(
-                                'Grain Free',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 12.sp,
-                                  color: Color(0xff1B1C1C),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.restaurant,
+                                  color: const Color(0xff006971),
+                                  size: 26.sp,
                                 ),
-                              ),
-                            ],
+                                SizedBox(height: 4.h),
+                                Text(
+                                  'Grain Free',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12.sp,
+                                    color: const Color(0xff1B1C1C),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ],
@@ -395,7 +409,7 @@ class _OrganicGrainState extends State<OrganicGrain> {
                     SizedBox(height: 20.h),
                     Container(
                       height: 70.h,
-                      width: 350.w,
+                      width: double.infinity,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(18.r),
                         color: Colors.white,
@@ -431,7 +445,7 @@ class _OrganicGrainState extends State<OrganicGrain> {
                     SizedBox(height: 10.h),
                     Container(
                       height: 70.h,
-                      width: 350.w,
+                      width: double.infinity,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(18.r),
                         color: Colors.white,
@@ -466,28 +480,35 @@ class _OrganicGrainState extends State<OrganicGrain> {
                     ),
                     SizedBox(height: 25.h),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Column(
-                          children: [
-                            Text(
-                              'Customer Reviews',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 20.sp,
-                                color: Color(0xff1B1C1C),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Customer Reviews',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 20.sp,
+                                  color: const Color(0xff1B1C1C),
+                                ),
                               ),
-                            ),
-                            Text(
-                              'Based on 124 verified purchases',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w400,
-                                fontSize: 12.sp,
-                                color: Color(0xff57423D),
+                              Text(
+                                'Based on 124 verified purchases',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w400,
+                                  fontSize: 12.sp,
+                                  color: const Color(0xff57423D),
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
+
                         TextButton(
                           onPressed: () {},
                           child: Text(
@@ -495,7 +516,7 @@ class _OrganicGrainState extends State<OrganicGrain> {
                             style: TextStyle(
                               fontWeight: FontWeight.w400,
                               fontSize: 16.sp,
-                              color: Color(0xffA73927),
+                              color: const Color(0xffA73927),
                             ),
                           ),
                         ),
@@ -567,83 +588,85 @@ class _OrganicGrainState extends State<OrganicGrain> {
                     SizedBox(height: 30.h),
                     Row(
                       children: [
-                        SizedBox(
-                          width: 170.w,
-                          height: 85.h,
-                          child: OutlinedButton(
-                            style: OutlinedButton.styleFrom(
-                              side: BorderSide(color: Color(0xff006971)),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(18.r),
+                        Expanded(
+                          child: SizedBox(
+                            height: 85.h,
+                            child: OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(color: Color(0xff006971)),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(18.r),
+                                ),
                               ),
-                            ),
-                            onPressed: () {},
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.autorenew,
-                                  color: Color(0xff006971),
-                                  size: 26.sp,
-                                ),
-                                SizedBox(width: 6.w),
-                                Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Subscribe',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w400,
-                                        fontSize: 16.sp,
-                                        color: Color(0xff006971),
+                              onPressed: () {},
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.autorenew,
+                                    color: Color(0xff006971),
+                                    size: 26.sp,
+                                  ),
+                                  SizedBox(width: 6.w),
+                                  Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Subscribe',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w400,
+                                          fontSize: 16.sp,
+                                          color: Color(0xff006971),
+                                        ),
                                       ),
-                                    ),
-                                    Text(
-                                      '& Save 15%',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w400,
-                                        fontSize: 16.sp,
-                                        color: Color(0xff006971),
+                                      Text(
+                                        '& Save 15%',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w400,
+                                          fontSize: 16.sp,
+                                          color: Color(0xff006971),
+                                        ),
                                       ),
-                                    ),
-                                  ],
-                                ),
-                              ],
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
                         SizedBox(width: 10.w),
-                        SizedBox(
-                          width: 165.w,
-                          height: 85.h,
-                          child: ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Color(0xffA73927),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(18.r),
-                              ),
-                            ),
-                            onPressed: () async {
-                              await addToCart();
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => WishListPage(),
+                        Expanded(
+                          child: SizedBox(
+                            height: 85.h,
+                            child: ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Color(0xffA73927),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(18.r),
                                 ),
-                              );
-                            },
-                            icon: Icon(
-                              Icons.shopping_cart_outlined,
-                              color: Colors.white,
-                              size: 22.sp,
-                            ),
-                            label: Text(
-                              'Add to Cart',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w400,
-                                fontSize: 16.sp,
+                              ),
+                              onPressed: () async {
+                                await addToCart();
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => WishListPage(),
+                                  ),
+                                );
+                              },
+                              icon: Icon(
+                                Icons.shopping_cart_outlined,
                                 color: Colors.white,
+                                size: 22.sp,
+                              ),
+                              label: Text(
+                                'Add to Cart',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w400,
+                                  fontSize: 16.sp,
+                                  color: Colors.white,
+                                ),
                               ),
                             ),
                           ),
@@ -700,90 +723,100 @@ class _OrganicGrainState extends State<OrganicGrain> {
     required String review,
   }) {
     return Container(
-      width: 350.w,
+      width: double.infinity,
+      padding: EdgeInsets.all(15.w),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16.r),
         color: Colors.white,
         border: Border.all(color: const Color.fromARGB(97, 158, 158, 158)),
       ),
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 20.w),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(height: 10.h),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                CircleAvatar(
-                  radius: 25.r,
-                  backgroundColor: const Color(0xffFFDAD4),
-                  child: Text(
-                    initials,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 16.sp,
-                      color: const Color(0xff3F0300),
-                    ),
-                  ),
-                ),
-
-                Padding(
-                  padding: EdgeInsets.only(right: 20.w),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        name,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12.sp,
-                          color: const Color(0xff1B1C1C),
-                        ),
-                      ),
-
-                      Row(
-                        children: List.generate(
-                          5,
-                          (index) => Icon(
-                            index < rating.round()
-                                ? Icons.star
-                                : Icons.star_border,
-                            color: Colors.amber,
-                            size: 18.sp,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                Text(
-                  time,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // PROFILE
+              CircleAvatar(
+                radius: 25.r,
+                backgroundColor: const Color(0xffFFDAD4),
+                child: Text(
+                  initials,
                   style: TextStyle(
-                    fontWeight: FontWeight.w400,
-                    fontSize: 12.sp,
-                    color: const Color(0xff57423D),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16.sp,
+                    color: const Color(0xff3F0300),
                   ),
                 ),
-              ],
-            ),
-
-            SizedBox(height: 10.h),
-
-            Text(
-              review,
-              style: TextStyle(
-                fontWeight: FontWeight.w400,
-                fontSize: 14.sp,
-                color: const Color(0xff57423D),
               ),
-            ),
 
-            SizedBox(height: 15.h),
-          ],
-        ),
+              SizedBox(width: 12.w),
+
+              // NAME + STARS
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12.sp,
+                        color: const Color(0xff1B1C1C),
+                      ),
+                    ),
+
+                    SizedBox(height: 3.h),
+
+                    Row(
+                      children: List.generate(
+                        5,
+                        (index) => Icon(
+                          index < rating.round()
+                              ? Icons.star
+                              : Icons.star_border,
+                          color: Colors.amber,
+                          size: 16.sp,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // TIME
+              SizedBox(width: 8.w),
+
+              Text(
+                time,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontWeight: FontWeight.w400,
+                  fontSize: 11.sp,
+                  color: const Color(0xff57423D),
+                ),
+              ),
+            ],
+          ),
+
+          SizedBox(height: 12.h),
+
+          // REVIEW
+          Text(
+            review,
+            style: TextStyle(
+              fontWeight: FontWeight.w400,
+              fontSize: 14.sp,
+              color: const Color(0xff57423D),
+              height: 1.4,
+            ),
+          ),
+
+          SizedBox(height: 5.h),
+        ],
       ),
     );
   }
