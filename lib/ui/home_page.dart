@@ -178,7 +178,7 @@ class _HomePageState extends State<HomePage> {
 
     try {
       final wishlistRef = FirebaseFirestore.instance
-          .collection('Wishlist')
+          .collection('wishlist')
           .doc(user.uid)
           .collection('items')
           .doc(productId);
@@ -259,7 +259,7 @@ class _HomePageState extends State<HomePage> {
     try {
       final snapshot =
           await FirebaseFirestore.instance
-              .collection('Wishlist')
+              .collection('wishlist')
               .doc(user.uid)
               .collection('items')
               .get();
@@ -318,7 +318,7 @@ class _HomePageState extends State<HomePage> {
 
             final bool isLandscape = orientation == Orientation.landscape;
 
-            final bool isTablet = screenWidth >= 600;
+            // final bool isTablet = screenWidth >= 600;
 
             final double horizontalPadding =
                 screenWidth < 400
@@ -541,7 +541,7 @@ class _HomePageState extends State<HomePage> {
                         // CATEGORIES
                         // =======================================
                         SizedBox(
-                          height: isLandscape ? 140 : 155,
+                          height: isLandscape ? 90 : 90,
                           width: double.infinity,
 
                           child: StreamBuilder<QuerySnapshot>(
@@ -614,7 +614,6 @@ class _HomePageState extends State<HomePage> {
 
                                       child: Column(
                                         mainAxisSize: MainAxisSize.min,
-
                                         children: [
                                           // ==========================================
                                           // CATEGORY IMAGE
@@ -624,58 +623,99 @@ class _HomePageState extends State<HomePage> {
                                             height: isLandscape ? 58 : 60,
 
                                             child: ClipOval(
-                                              child: Container(
-                                                color: Colors.grey.shade300,
+                                              child:
+                                                  imageUrl.isNotEmpty
+                                                      ? Image.network(
+                                                        imageUrl,
+                                                        width:
+                                                            isLandscape
+                                                                ? 58
+                                                                : 60,
+                                                        height:
+                                                            isLandscape
+                                                                ? 58
+                                                                : 60,
+                                                        fit: BoxFit.cover,
 
-                                                child:
-                                                    imageUrl.isNotEmpty
-                                                        ? Image.network(
-                                                          imageUrl,
-                                                          fit: BoxFit.cover,
+                                                        loadingBuilder: (
+                                                          context,
+                                                          child,
+                                                          loadingProgress,
+                                                        ) {
+                                                          if (loadingProgress ==
+                                                              null) {
+                                                            return child;
+                                                          }
 
-                                                          errorBuilder: (
-                                                            context,
-                                                            error,
-                                                            stackTrace,
-                                                          ) {
-                                                            return const Icon(
-                                                              Icons
-                                                                  .image_not_supported,
+                                                          return Container(
+                                                            color:
+                                                                Colors
+                                                                    .grey
+                                                                    .shade200,
+                                                            child: const Center(
+                                                              child:
+                                                                  CircularProgressIndicator(
+                                                                    strokeWidth:
+                                                                        2,
+                                                                  ),
+                                                            ),
+                                                          );
+                                                        },
+
+                                                        errorBuilder: (
+                                                          context,
+                                                          error,
+                                                          stackTrace,
+                                                        ) {
+                                                          return Container(
+                                                            color:
+                                                                Colors
+                                                                    .grey
+                                                                    .shade200,
+                                                            child: const Icon(
+                                                              Icons.pets,
                                                               color:
                                                                   Colors.grey,
-                                                            );
-                                                          },
-                                                        )
-                                                        : const Icon(
+                                                            ),
+                                                          );
+                                                        },
+                                                      )
+                                                      : Container(
+                                                        color:
+                                                            Colors
+                                                                .grey
+                                                                .shade200,
+                                                        child: const Icon(
                                                           Icons.pets,
                                                           color: Colors.grey,
                                                         ),
-                                              ),
+                                                      ),
                                             ),
                                           ),
 
-                                          const SizedBox(height: 5),
+                                          // ==========================================
+                                          // SMALL SPACE
+                                          // ==========================================
+                                          SizedBox(height: 2.h),
 
                                           // ==========================================
                                           // CATEGORY NAME
                                           // ==========================================
-                                          ConstrainedBox(
-                                            constraints: BoxConstraints(
-                                              minHeight: isLandscape ? 40 : 45,
-                                              maxHeight: isLandscape ? 55 : 65,
-                                            ),
-                                            child: Text(
-                                              categoryName,
-                                              maxLines: 2,
-                                              overflow: TextOverflow.ellipsis,
-                                              textAlign: TextAlign.center,
-                                              style: TextStyle(
-                                                fontSize:
-                                                    isLandscape ? 10.sp : 11.sp,
-                                                fontWeight: FontWeight.w500,
-                                                color: Colors.black,
-                                                height: 1.25,
-                                              ),
+                                          Text(
+                                            categoryName,
+
+                                            maxLines: 2,
+
+                                            overflow: TextOverflow.ellipsis,
+
+                                            textAlign: TextAlign.center,
+
+                                            style: TextStyle(
+                                              fontSize:
+                                                  isLandscape ? 10.sp : 11.sp,
+                                              fontWeight: FontWeight.w500,
+                                              color: Colors.black,
+                                              height: 1.1,
                                             ),
                                           ),
                                         ],
@@ -688,22 +728,23 @@ class _HomePageState extends State<HomePage> {
                           ),
                         ),
 
-                        SizedBox(height: isLandscape ? 10.h : 15.h),
+                        SizedBox(height: 0),
+                        // =======================================
+                        // FEATURED BANNER
 
                         // =======================================
                         // FEATURED BANNER
                         // =======================================
                         AspectRatio(
-                          aspectRatio: isTablet ? 3.5 : 2.2,
+                          aspectRatio: 2.2,
 
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(15.r),
 
                             child: Image.asset(
                               "assets/Section - Featured Banner.png",
-
                               width: double.infinity,
-
+                              height: double.infinity,
                               fit: BoxFit.cover,
                             ),
                           ),

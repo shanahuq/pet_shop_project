@@ -591,7 +591,7 @@ class WishListTab extends StatelessWidget {
     return StreamBuilder<QuerySnapshot>(
       stream:
           FirebaseFirestore.instance
-              .collection('Wishlist')
+              .collection('wishlist')
               .doc(user.uid)
               .collection('items')
               .orderBy('addedAt', descending: true)
@@ -683,7 +683,7 @@ class WishlistItem extends StatelessWidget {
 
   Future<void> removeFromWishlist() async {
     await FirebaseFirestore.instance
-        .collection('Wishlist')
+        .collection('wishlist')
         .doc(userId)
         .collection('items')
         .doc(productId)
