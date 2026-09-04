@@ -179,6 +179,75 @@ class _OrganicGrainState extends State<OrganicGrain> {
     }
   }
 
+  Future<void> toggleWishlist() async {
+    final user = _auth.currentUser;
+
+    if (user == null) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please login first')));
+      return;
+    }
+
+    try {
+      final product = widget.product;
+
+      final String id = product['id'].toString();
+
+      final wishlistRef = _firestore
+          .collection('wishlist')
+          .doc(user.uid)
+          .collection('items')
+          .doc(id);
+
+      final wishlistDoc = await wishlistRef.get();
+
+      if (wishlistDoc.exists) {
+        // ============================
+        // REMOVE FROM WISHLIST
+        // ============================
+
+        await wishlistRef.delete();
+
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${product['name']} removed from wishlist')),
+        );
+      } else {
+        // ============================
+        // ADD TO WISHLIST
+        // ============================
+
+        await wishlistRef.set({
+          'productId': id,
+          'name': product['name']?.toString() ?? '',
+          'brand': product['brand']?.toString() ?? '',
+          'image': product['imageUrl']?.toString() ?? '',
+          'price': getPrice(product['price']),
+          'rating': getRating(product['rating']),
+          'addedAt': FieldValue.serverTimestamp(),
+        });
+
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${product['name']} added to wishlist')),
+        );
+      }
+    } catch (e) {
+      debugPrint('WISHLIST ERROR: $e');
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Wishlist error: $e')));
+    }
+  }
+
   // ============================================================
   // BUILD
   // ============================================================
@@ -476,21 +545,37 @@ class _OrganicGrainState extends State<OrganicGrain> {
           Positioned(
             top: 15,
             right: 15,
-            child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  isSelected = !isSelected;
-                });
+            child: StreamBuilder<DocumentSnapshot>(
+              stream:
+                  _firestore
+                      .collection('wishlist')
+                      .doc(_auth.currentUser?.uid)
+                      .collection('items')
+                      .doc(productId)
+                      .snapshots(),
+
+              builder: (context, snapshot) {
+                final bool isFavorite = snapshot.data?.exists ?? false;
+
+                return GestureDetector(
+                  onTap: () async {
+                    await toggleWishlist();
+                  },
+
+                  child: CircleAvatar(
+                    radius: isLandscape ? 18 : 20,
+                    backgroundColor: Colors.white,
+
+                    child: Icon(
+                      isFavorite ? Icons.favorite : Icons.favorite_border,
+
+                      color: isFavorite ? const Color(0xffA73927) : Colors.grey,
+
+                      size: isLandscape ? 19 : 22,
+                    ),
+                  ),
+                );
               },
-              child: CircleAvatar(
-                radius: isLandscape ? 18 : 20,
-                backgroundColor: Colors.white,
-                child: Icon(
-                  isSelected ? Icons.favorite : Icons.favorite_border,
-                  color: isSelected ? const Color(0xffA73927) : Colors.grey,
-                  size: isLandscape ? 19 : 22,
-                ),
-              ),
             ),
           ),
 
@@ -1256,11 +1341,6 @@ class _OrganicGrainState extends State<OrganicGrain> {
                 await addToCart();
 
                 if (!mounted) return;
-
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => WishListPage()),
-                );
               },
 
               icon: Icon(

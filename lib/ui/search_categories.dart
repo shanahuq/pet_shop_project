@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:pet_shop_project/ui/home_page.dart';
 import 'package:pet_shop_project/ui/wish_list_page.dart';
+import 'organic_grain.dart';
 
 class SearchCategories extends StatefulWidget {
   final String title;
@@ -24,17 +25,44 @@ class _SearchCategoriesState extends State<SearchCategories> {
 
   final FirebaseFirestore db = FirebaseFirestore.instance;
 
- Stream<QuerySnapshot> get productsStream {
-  print('==============================');
-  print('TITLE: "${widget.title}"');
-  print('CATEGORY ID: "${widget.categoryId}"');
-  print('==============================');
+  Stream<QuerySnapshot> get productsStream {
+    print('==============================');
+    print('TITLE: "${widget.title}"');
+    print('CATEGORY ID: "${widget.categoryId}"');
+    print('==============================');
 
-  return FirebaseFirestore.instance
-      .collection('products')
-      .where('categoryId', isEqualTo: widget.categoryId)
-      .snapshots();
-}
+    return FirebaseFirestore.instance
+        .collection('products')
+        .where('categoryId', isEqualTo: widget.categoryId)
+        .snapshots();
+  }
+
+  double getPrice(dynamic value) {
+    if (value is num) {
+      return value.toDouble();
+    }
+
+    if (value is String) {
+      return double.tryParse(
+            value.replaceAll('\$', '').replaceAll(',', '').trim(),
+          ) ??
+          0.0;
+    }
+
+    return 0.0;
+  }
+
+  double getRating(dynamic value) {
+    if (value is num) {
+      return value.toDouble();
+    }
+
+    if (value is String) {
+      return double.tryParse(value.trim()) ?? 0.0;
+    }
+
+    return 0.0;
+  }
 
   Future<void> addToCart(Map<String, dynamic> product) async {
     final user = FirebaseAuth.instance.currentUser;
@@ -49,11 +77,7 @@ class _SearchCategoriesState extends State<SearchCategories> {
     }
 
     try {
-      final productId = product['name']
-          .toString()
-          .toLowerCase()
-          .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
-          .replaceAll(RegExp(r'^_|_$'), '');
+      final productId = product['id'].toString();
 
       final cartItemRef = FirebaseFirestore.instance
           .collection('carts')
@@ -73,8 +97,8 @@ class _SearchCategoriesState extends State<SearchCategories> {
           'productId': productId,
           'name': product['name'].toString(),
           'image': product['imageUrl'].toString(),
-          'price': product['price'].toString(),
-          'rating': product['rating'].toString(),
+          'price': getPrice(product['price']),
+          'rating': getRating(product['rating']),
           'quantity': 1,
           'addedAt': FieldValue.serverTimestamp(),
         });
@@ -105,31 +129,35 @@ class _SearchCategoriesState extends State<SearchCategories> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Please login first')));
+
       return;
     }
 
     try {
-      final productId = product['name']
-          .toString()
-          .toLowerCase()
-          .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
-          .replaceAll(RegExp(r'^_|_$'), '');
+      final productId = product['id'].toString();
 
       await FirebaseFirestore.instance
-          .collection('Wishlist')
+          .collection('wishlist')
           .doc(user.uid)
           .collection('items')
           .doc(productId)
           .set({
             'productId': productId,
-            'name': product['name'].toString(),
-            'image': product['imageUrl'].toString(),
-            'price': product['price'].toString(),
-            'rating': product['rating'].toString(),
+            'name': product['name']?.toString() ?? '',
+            'brand': product['brand']?.toString() ?? '',
+            'image': product['imageUrl']?.toString() ?? '',
+            'price': getPrice(product['price']),
+            'rating': getRating(product['rating']),
             'addedAt': FieldValue.serverTimestamp(),
           });
     } catch (e) {
       debugPrint('WISHLIST ADD ERROR: $e');
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to add wishlist: $e')));
     }
   }
 
@@ -146,14 +174,10 @@ class _SearchCategoriesState extends State<SearchCategories> {
     }
 
     try {
-      final productId = product['name']
-          .toString()
-          .toLowerCase()
-          .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
-          .replaceAll(RegExp(r'^_|_$'), '');
+      final productId = product['id'].toString();
 
       await FirebaseFirestore.instance
-          .collection('Wishlist')
+          .collection('wishlist')
           .doc(user.uid)
           .collection('items')
           .doc(productId)
@@ -173,14 +197,10 @@ class _SearchCategoriesState extends State<SearchCategories> {
       return;
     }
 
-    final productId = product['name']
-        .toString()
-        .toLowerCase()
-        .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
-        .replaceAll(RegExp(r'^_|_$'), '');
+    final productId = product['id'].toString();
 
     final docRef = FirebaseFirestore.instance
-        .collection('Wishlist')
+        .collection('wishlist')
         .doc(user.uid)
         .collection('items')
         .doc(productId);
@@ -404,231 +424,236 @@ class _SearchCategoriesState extends State<SearchCategories> {
                                 ),
 
                             itemBuilder: (context, index) {
-                              final item =
-                                  products[index].data()
-                                      as Map<String, dynamic>;
-                              return Container(
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(16.r),
-                                  color: Colors.white,
-                                  border: Border.all(
-                                    color: const Color(0xffFFFFFF),
+                              final item = {
+                                ...(products[index].data()
+                                    as Map<String, dynamic>),
+                                'id': products[index].id,
+                              };
+                              return GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder:
+                                          (context) =>
+                                              OrganicGrain(product: item),
+                                    ),
+                                  );
+                                },
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(16.r),
+                                    color: Colors.white,
+                                    border: Border.all(
+                                      color: const Color(0xffFFFFFF),
+                                    ),
                                   ),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Stack(
-                                      children: [
-                                        ClipRRect(
-                                          borderRadius: BorderRadius.circular(
-                                            16.r,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Stack(
+                                        children: [
+                                          ClipRRect(
+                                            borderRadius: BorderRadius.circular(
+                                              16.r,
+                                            ),
+                                            child: SizedBox(
+                                              height: 140.h,
+                                              width: double.infinity,
+                                              child: Image.network(
+                                                item['imageUrl']?.toString() ??
+                                                    '',
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (
+                                                  context,
+                                                  error,
+                                                  stackTrace,
+                                                ) {
+                                                  return Container(
+                                                    color: Colors.grey.shade200,
+                                                    child: const Center(
+                                                      child: Icon(
+                                                        Icons
+                                                            .image_not_supported,
+                                                        size: 40,
+                                                        color: Colors.grey,
+                                                      ),
+                                                    ),
+                                                  );
+                                                },
+                                                loadingBuilder: (
+                                                  context,
+                                                  child,
+                                                  loadingProgress,
+                                                ) {
+                                                  if (loadingProgress == null) {
+                                                    return child;
+                                                  }
+
+                                                  return const Center(
+                                                    child:
+                                                        CircularProgressIndicator(),
+                                                  );
+                                                },
+                                              ),
+                                            ),
                                           ),
-                                          child: SizedBox(
-                                            height: 140.h,
-                                            width: double.infinity,
-                                            child: Image.network(
-                                              item['imageUrl']?.toString() ??
-                                                  '',
-                                              fit: BoxFit.cover,
-                                              errorBuilder: (
-                                                context,
-                                                error,
-                                                stackTrace,
-                                              ) {
-                                                return Container(
-                                                  color: Colors.grey.shade200,
-                                                  child: const Center(
+
+                                          Positioned(
+                                            top: 8.h,
+                                            right: 12.w,
+                                            child: StreamBuilder<
+                                              DocumentSnapshot
+                                            >(
+                                              stream:
+                                                  FirebaseFirestore.instance
+                                                      .collection('wishlist')
+                                                      .doc(
+                                                        FirebaseAuth
+                                                            .instance
+                                                            .currentUser
+                                                            ?.uid,
+                                                      )
+                                                      .collection('items')
+                                                      .doc(
+                                                        item['id'].toString(),
+                                                      )
+                                                      .snapshots(),
+                                              builder: (context, snapshot) {
+                                                final isFavorite =
+                                                    snapshot.data?.exists ??
+                                                    false;
+
+                                                return GestureDetector(
+                                                  onTap: () async {
+                                                    await toggleWishlist(item);
+                                                  },
+                                                  child: CircleAvatar(
+                                                    radius: 16.r,
+                                                    backgroundColor:
+                                                        Colors.white,
                                                     child: Icon(
-                                                      Icons.image_not_supported,
-                                                      size: 40,
-                                                      color: Colors.grey,
+                                                      isFavorite
+                                                          ? Icons.favorite
+                                                          : Icons
+                                                              .favorite_border,
+                                                      color:
+                                                          isFavorite
+                                                              ? const Color(
+                                                                0xffA73927,
+                                                              )
+                                                              : Colors.grey,
                                                     ),
                                                   ),
                                                 );
                                               },
-                                              loadingBuilder: (
-                                                context,
-                                                child,
-                                                loadingProgress,
-                                              ) {
-                                                if (loadingProgress == null) {
-                                                  return child;
-                                                }
-
-                                                return const Center(
-                                                  child:
-                                                      CircularProgressIndicator(),
-                                                );
-                                              },
                                             ),
                                           ),
-                                        ),
+                                        ],
+                                      ),
 
-                                        Positioned(
-                                          top: 8.h,
-                                          right: 12.w,
-                                          child: StreamBuilder<
-                                            DocumentSnapshot
-                                          >(
-                                            stream:
-                                                FirebaseFirestore.instance
-                                                    .collection('Wishlist')
-                                                    .doc(
-                                                      FirebaseAuth
-                                                          .instance
-                                                          .currentUser
-                                                          ?.uid,
-                                                    )
-                                                    .collection('items')
-                                                    .doc(
-                                                      item['name']
-                                                          .toString()
-                                                          .toLowerCase()
-                                                          .replaceAll(
-                                                            RegExp(
-                                                              r'[^a-z0-9]+',
-                                                            ),
-                                                            '_',
-                                                          )
-                                                          .replaceAll(
-                                                            RegExp(r'^_|_$'),
-                                                            '',
-                                                          ),
-                                                    )
-                                                    .snapshots(),
-                                            builder: (context, snapshot) {
-                                              final isFavorite =
-                                                  snapshot.data?.exists ??
-                                                  false;
+                                      SizedBox(height: 10.h),
 
-                                              return GestureDetector(
-                                                onTap: () async {
-                                                  await toggleWishlist(item);
-                                                },
-                                                child: CircleAvatar(
-                                                  radius: 16.r,
-                                                  backgroundColor: Colors.white,
-                                                  child: Icon(
-                                                    isFavorite
-                                                        ? Icons.favorite
-                                                        : Icons.favorite_border,
-                                                    color:
-                                                        isFavorite
-                                                            ? const Color(
-                                                              0xffA73927,
-                                                            )
-                                                            : Colors.grey,
-                                                  ),
-                                                ),
-                                              );
-                                            },
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            Icons.star,
+                                            color: const Color(0xffA73927),
+                                            size: 16.sp,
                                           ),
+                                          SizedBox(width: 4.w),
+                                          Text(
+                                            item['rating'].toString(),
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 12.sp,
+                                              color: const Color(0xff57423D),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+
+                                      SizedBox(height: 8.h),
+
+                                      Text(
+                                        item['name'],
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w400,
+                                          fontSize: 16.sp,
+                                          color: const Color(0xff1B1C1C),
                                         ),
-                                      ],
-                                    ),
+                                      ),
 
-                                    SizedBox(height: 10.h),
+                                      SizedBox(height: 5.h),
 
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.star,
+                                      Text(
+                                        item['price'].toString(),
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w400,
+                                          fontSize: 18.sp,
                                           color: const Color(0xffA73927),
-                                          size: 16.sp,
                                         ),
-                                        SizedBox(width: 4.w),
-                                        Text(
-                                          item['rating'].toString(),
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 12.sp,
-                                            color: const Color(0xff57423D),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-
-                                    SizedBox(height: 8.h),
-
-                                    Text(
-                                      item['name'],
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w400,
-                                        fontSize: 16.sp,
-                                        color: const Color(0xff1B1C1C),
                                       ),
-                                    ),
 
-                                    SizedBox(height: 5.h),
+                                      SizedBox(height: 10.h),
 
-                                    Text(
-                                      item['price'].toString(),
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w400,
-                                        fontSize: 18.sp,
-                                        color: const Color(0xffA73927),
-                                      ),
-                                    ),
-
-                                    SizedBox(height: 10.h),
-
-                                    SizedBox(
-                                      width: double.infinity,
-                                      height: 45.h,
-                                      child: OutlinedButton(
-                                        style: OutlinedButton.styleFrom(
-                                          backgroundColor: const Color(
-                                            0xffA73927,
-                                          ),
-                                          side: const BorderSide(
-                                            color: Color(0xffA73927),
-                                          ),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              16.r,
+                                      SizedBox(
+                                        width: double.infinity,
+                                        height: 45.h,
+                                        child: OutlinedButton(
+                                          style: OutlinedButton.styleFrom(
+                                            backgroundColor: const Color(
+                                              0xffA73927,
                                             ),
-                                          ),
-                                          padding: EdgeInsets.zero,
-                                        ),
-                                        onPressed: () async {
-                                          await addToCart(item);
-
-                                          if (!context.mounted) return;
-
-                                          // Navigate to your CartPage here
-                                          // Navigator.push(
-                                          //   context,
-                                          //   MaterialPageRoute(
-                                          //     builder: (context) => const CartPage(),
-                                          //   ),
-                                          // );
-                                        },
-                                        child: Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            Icon(
-                                              Icons.shopping_cart_outlined,
-                                              color: Colors.white,
-                                              size: 20.sp,
+                                            side: const BorderSide(
+                                              color: Color(0xffA73927),
                                             ),
-                                            SizedBox(width: 8.w),
-                                            Text(
-                                              'Add to Cart',
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.w600,
-                                                fontSize: 12.sp,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(16.r),
+                                            ),
+                                            padding: EdgeInsets.zero,
+                                          ),
+                                          onPressed: () async {
+                                            await addToCart(item);
+
+                                            if (!context.mounted) return;
+
+                                            // Navigate to your CartPage here
+                                            // Navigator.push(
+                                            //   context,
+                                            //   MaterialPageRoute(
+                                            //     builder: (context) => const CartPage(),
+                                            //   ),
+                                            // );
+                                          },
+                                          child: Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              Icon(
+                                                Icons.shopping_cart_outlined,
                                                 color: Colors.white,
+                                                size: 20.sp,
                                               ),
-                                            ),
-                                          ],
+                                              SizedBox(width: 8.w),
+                                              Text(
+                                                'Add to Cart',
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 12.sp,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                               );
                             },

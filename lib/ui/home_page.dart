@@ -89,71 +89,92 @@ class _HomePageState extends State<HomePage> {
   // ADD TO CART
   // ============================================================
 
-  Future<void> addToCart(Map<String, dynamic> product) async {
-    final user = FirebaseAuth.instance.currentUser;
+ Future<void> addToCart(Map<String, dynamic> product) async {
+  final user = FirebaseAuth.instance.currentUser;
 
-    if (user == null) {
-      if (!mounted) return;
+  if (user == null) {
+    if (!mounted) return;
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Please login first')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Please login first')),
+    );
 
-      return;
-    }
-
-    try {
-      final productId = product['id'].toString();
-
-      final cartItemRef = FirebaseFirestore.instance
-          .collection('carts')
-          .doc(user.uid)
-          .collection('items')
-          .doc(productId);
-
-      final cartItem = await cartItemRef.get();
-
-      if (cartItem.exists) {
-        final data = cartItem.data();
-
-        final currentQuantity = getQuantity(data?['quantity']);
-
-        await cartItemRef.update({'quantity': currentQuantity + 1});
-      } else {
-        await cartItemRef.set({
-          'productId': productId,
-
-          'name': product['name']?.toString() ?? '',
-
-          'brand': product['brand']?.toString() ?? '',
-
-          'image': product['imageUrl']?.toString() ?? '',
-
-          // IMPORTANT:
-          // Always save price as a NUMBER
-          'price': getPrice(product['price']),
-
-          'quantity': 1,
-
-          'addedAt': FieldValue.serverTimestamp(),
-        });
-      }
-
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${product['name']} added to cart')),
-      );
-    } catch (e) {
-      debugPrint('FIREBASE ERROR: $e');
-
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to add product: $e')));
-    }
+    return;
   }
+
+  try {
+    final productId = product['id'].toString();
+
+    final double price = getPrice(product['price']);
+
+    debugPrint('====================================');
+    debugPrint('PRODUCT NAME: ${product['name']}');
+    debugPrint('ORIGINAL PRICE: ${product['price']}');
+    debugPrint('ORIGINAL PRICE TYPE: ${product['price'].runtimeType}');
+    debugPrint('CONVERTED PRICE: $price');
+    debugPrint('CONVERTED PRICE TYPE: ${price.runtimeType}');
+    debugPrint('====================================');
+
+    final cartItemRef = FirebaseFirestore.instance
+        .collection('carts')
+        .doc(user.uid)
+        .collection('items')
+        .doc(productId);
+
+    final cartItem = await cartItemRef.get();
+
+    if (cartItem.exists) {
+      final data = cartItem.data();
+
+      final currentQuantity = getQuantity(data?['quantity']);
+
+      await cartItemRef.update({
+        'quantity': currentQuantity + 1,
+        'price': price,
+      });
+    } else {
+      await cartItemRef.set({
+        'productId': productId,
+        'name': product['name']?.toString() ?? '',
+        'brand': product['brand']?.toString() ?? '',
+        'image': product['imageUrl']?.toString() ?? '',
+        'price': price,
+        'quantity': 1,
+        'addedAt': FieldValue.serverTimestamp(),
+      });
+    }
+
+    // READ IT BACK FROM FIRESTORE
+    final check = await cartItemRef.get();
+
+    final savedData = check.data();
+
+    debugPrint('====================================');
+    debugPrint('FIRESTORE PRICE: ${savedData?['price']}');
+    debugPrint(
+      'FIRESTORE PRICE TYPE: ${savedData?['price'].runtimeType}',
+    );
+    debugPrint('====================================');
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${product['name']} added to cart'),
+      ),
+    );
+  } catch (e) {
+    debugPrint('FIREBASE ERROR: $e');
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Failed to add product: $e'),
+      ),
+    );
+  }
+}
 
   // ============================================================
   // TOGGLE WISHLIST

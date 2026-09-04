@@ -3,6 +3,59 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:pet_shop_project/ui/checkout_page.dart';
+import 'organic_grain.dart';
+
+Future<void> openProductDetails(BuildContext context, String productId) async {
+  try {
+    final firestore = FirebaseFirestore.instance;
+
+    // First, try using productId as the Firestore document ID
+    DocumentSnapshot<Map<String, dynamic>> productDoc =
+        await firestore.collection('products').doc(productId).get();
+
+    // If not found, search by the productId field
+    if (!productDoc.exists) {
+      final querySnapshot =
+          await firestore
+              .collection('products')
+              .where('productId', isEqualTo: productId)
+              .limit(1)
+              .get();
+
+      if (querySnapshot.docs.isEmpty) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Product not found: $productId')),
+          );
+        }
+        return;
+      }
+
+      productDoc = querySnapshot.docs.first;
+    }
+
+    final productData = productDoc.data();
+
+    if (productData == null) {
+      return;
+    }
+
+    final product = {...productData, 'id': productDoc.id};
+
+    if (!context.mounted) return;
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => OrganicGrain(product: product)),
+    );
+  } catch (e) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to load product: $e')));
+    }
+  }
+}
 
 class WishListPage extends StatefulWidget {
   const WishListPage({super.key});
@@ -162,6 +215,33 @@ class CartTab extends StatelessWidget {
 
   const CartTab({super.key, required this.userId});
 
+  double getPrice(dynamic value) {
+    if (value is num) {
+      return value.toDouble();
+    }
+
+    if (value is String) {
+      return double.tryParse(
+            value.replaceAll('\$', '').replaceAll(',', '').trim(),
+          ) ??
+          0.0;
+    }
+
+    return 0.0;
+  }
+
+  int getQuantity(dynamic value) {
+    if (value is num) {
+      return value.toInt();
+    }
+
+    if (value is String) {
+      return int.tryParse(value.trim()) ?? 1;
+    }
+
+    return 1;
+  }
+
   @override
   Widget build(BuildContext context) {
     final FirebaseFirestore firestore = FirebaseFirestore.instance;
@@ -204,8 +284,8 @@ class CartTab extends StatelessWidget {
         for (final doc in cartItems) {
           final data = doc.data() as Map<String, dynamic>;
 
-          final price = (data['price'] as num?)?.toDouble() ?? 0.0;
-          final quantity = (data['quantity'] as num?)?.toInt() ?? 1;
+          final double price = getPrice(data['price']);
+          final int quantity = getQuantity(data['quantity']);
 
           subtotal += price * quantity;
         }
@@ -222,15 +302,17 @@ class CartTab extends StatelessWidget {
 
                     final data = doc.data() as Map<String, dynamic>;
 
+                    final double price = getPrice(data['price']);
+                    final int quantity = getQuantity(data['quantity']);
+
                     return CartItem(
                       productId: doc.id,
                       userId: userId,
                       image: data['image']?.toString() ?? '',
                       name: data['name']?.toString() ?? '',
                       brand: data['brand']?.toString() ?? '',
-                      price:
-                          '\$${(data['price'] as num?)?.toDouble().toStringAsFixed(2) ?? '0.00'}',
-                      quantity: (data['quantity'] as num?)?.toInt() ?? 1,
+                      price: '\$${price.toStringAsFixed(2)}',
+                      quantity: quantity,
                     );
                   },
                 ),
@@ -371,205 +453,219 @@ class CartItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 2,
-      margin: EdgeInsets.only(bottom: 15.h),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18.r)),
-      child: Padding(
-        padding: EdgeInsets.all(12.w),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // PRODUCT IMAGE
-            ClipRRect(
-              borderRadius: BorderRadius.circular(10.r),
-              child: Image.network(
-                image,
-                width: 75.w,
-                height: 75.w,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    width: 75.w,
-                    height: 75.w,
-                    color: Colors.grey.shade200,
-                    child: const Icon(
-                      Icons.image_not_supported,
-                      color: Colors.grey,
-                    ),
-                  );
-                },
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) {
-                    return child;
-                  }
-
-                  return SizedBox(
-                    width: 75.w,
-                    height: 75.w,
-                    child: const Center(child: CircularProgressIndicator()),
-                  );
-                },
-              ),
-            ),
-
-            SizedBox(width: 12.w),
-
-            // PRODUCT DETAILS
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // PRODUCT NAME
-                  Text(
-                    name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15.sp,
-                    ),
-                  ),
-
-                  SizedBox(height: 4.h),
-
-                  // BRAND
-                  Text(
-                    brand,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: Colors.grey, fontSize: 12.sp),
-                  ),
-
-                  SizedBox(height: 8.h),
-
-                  // PRICE + QUANTITY
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // PRICE
-                      Flexible(
-                        child: Text(
-                          price,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: const Color(0xffA73927),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16.sp,
-                          ),
-                        ),
+    return InkWell(
+      borderRadius: BorderRadius.circular(18.r),
+      onTap: () async {
+        await openProductDetails(context, productId);
+      },
+      child: Card(
+        elevation: 2,
+        margin: EdgeInsets.only(bottom: 15.h),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18.r),
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(12.w),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // PRODUCT IMAGE
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10.r),
+                child: Image.network(
+                  image,
+                  width: 75.w,
+                  height: 75.w,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      width: 75.w,
+                      height: 75.w,
+                      color: Colors.grey.shade200,
+                      child: const Icon(
+                        Icons.image_not_supported,
+                        color: Colors.grey,
                       ),
-
-                      SizedBox(width: 5.w),
-
-                      // QUANTITY CONTROLS
-                      Container(
-                        height: 36.h,
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade300),
-                          borderRadius: BorderRadius.circular(10.r),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            // MINUS
-                            IconButton(
-                              padding: EdgeInsets.zero,
-                              constraints: BoxConstraints(
-                                minWidth: 30.w,
-                                minHeight: 30.h,
-                              ),
-                              onPressed: () async {
-                                try {
-                                  await updateQuantity(quantity - 1);
-                                } catch (e) {
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          'Failed to update quantity: $e',
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                }
-                              },
-                              icon: Icon(Icons.remove, size: 16.sp),
-                            ),
-
-                            // QUANTITY
-                            Text(
-                              quantity.toString(),
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14.sp,
-                              ),
-                            ),
-
-                            // PLUS
-                            IconButton(
-                              padding: EdgeInsets.zero,
-                              constraints: BoxConstraints(
-                                minWidth: 30.w,
-                                minHeight: 30.h,
-                              ),
-                              onPressed: () async {
-                                try {
-                                  await updateQuantity(quantity + 1);
-                                } catch (e) {
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          'Failed to update quantity: $e',
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                }
-                              },
-                              icon: Icon(Icons.add, size: 16.sp),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            // DELETE BUTTON
-            SizedBox(
-              width: 35.w,
-              child: IconButton(
-                padding: EdgeInsets.zero,
-                onPressed: () async {
-                  try {
-                    await deleteItem();
-
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Item removed from cart')),
-                      );
+                    );
+                  },
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) {
+                      return child;
                     }
-                  } catch (e) {
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(
-                        context,
-                      ).showSnackBar(SnackBar(content: Text('Error: $e')));
-                    }
-                  }
-                },
-                icon: Icon(
-                  Icons.delete_outline,
-                  color: Colors.red,
-                  size: 22.sp,
+
+                    return SizedBox(
+                      width: 75.w,
+                      height: 75.w,
+                      child: const Center(child: CircularProgressIndicator()),
+                    );
+                  },
                 ),
               ),
-            ),
-          ],
+
+              SizedBox(width: 12.w),
+
+              // PRODUCT DETAILS
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // PRODUCT NAME
+                    Text(
+                      name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15.sp,
+                      ),
+                    ),
+
+                    SizedBox(height: 4.h),
+
+                    // BRAND
+                    Text(
+                      brand,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: Colors.grey, fontSize: 12.sp),
+                    ),
+
+                    SizedBox(height: 8.h),
+
+                    // PRICE + QUANTITY
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // PRICE
+                        Flexible(
+                          child: Text(
+                            price,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: const Color(0xffA73927),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16.sp,
+                            ),
+                          ),
+                        ),
+
+                        SizedBox(width: 5.w),
+
+                        // QUANTITY CONTROLS
+                        Container(
+                          height: 36.h,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(10.r),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // MINUS
+                              IconButton(
+                                padding: EdgeInsets.zero,
+                                constraints: BoxConstraints(
+                                  minWidth: 30.w,
+                                  minHeight: 30.h,
+                                ),
+                                onPressed: () async {
+                                  try {
+                                    await updateQuantity(quantity - 1);
+                                  } catch (e) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Failed to update quantity: $e',
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  }
+                                },
+                                icon: Icon(Icons.remove, size: 16.sp),
+                              ),
+
+                              // QUANTITY
+                              Text(
+                                quantity.toString(),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14.sp,
+                                ),
+                              ),
+
+                              // PLUS
+                              IconButton(
+                                padding: EdgeInsets.zero,
+                                constraints: BoxConstraints(
+                                  minWidth: 30.w,
+                                  minHeight: 30.h,
+                                ),
+                                onPressed: () async {
+                                  try {
+                                    await updateQuantity(quantity + 1);
+                                  } catch (e) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Failed to update quantity: $e',
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  }
+                                },
+                                icon: Icon(Icons.add, size: 16.sp),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              // DELETE BUTTON
+              SizedBox(
+                width: 35.w,
+                child: IconButton(
+                  padding: EdgeInsets.zero,
+                  onPressed: () async {
+                    try {
+                      await deleteItem();
+
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Item removed from cart'),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+                      }
+                    }
+                  },
+                  icon: Icon(
+                    Icons.delete_outline,
+                    color: Colors.red,
+                    size: 22.sp,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -692,109 +788,117 @@ class WishlistItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 2,
-      margin: EdgeInsets.only(bottom: 15.h),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18.r)),
-      child: Padding(
-        padding: EdgeInsets.all(12.w),
-        child: Row(
-          children: [
-            // PRODUCT IMAGE
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12.r),
-              child: Image.network(
-                image,
-                width: 85.w,
-                height: 85.h,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    width: 85.w,
-                    height: 85.h,
-                    color: Colors.grey.shade200,
-                    child: const Icon(
-                      Icons.image_not_supported,
-                      color: Colors.grey,
-                    ),
-                  );
-                },
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) {
-                    return child;
-                  }
-
-                  return SizedBox(
-                    width: 85.w,
-                    height: 85.h,
-                    child: const Center(child: CircularProgressIndicator()),
-                  );
-                },
-              ),
-            ),
-
-            SizedBox(width: 15.w),
-
-            // PRODUCT DETAILS
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16.sp,
-                    ),
-                  ),
-
-                  SizedBox(height: 5.h),
-
-                  Text(
-                    brand,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: Colors.grey, fontSize: 13.sp),
-                  ),
-
-                  SizedBox(height: 8.h),
-
-                  Text(
-                    price,
-                    style: TextStyle(
-                      color: const Color(0xffA73927),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16.sp,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // REMOVE FROM WISHLIST
-            IconButton(
-              onPressed: () async {
-                try {
-                  await removeFromWishlist();
-
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Removed from wishlist')),
+    return InkWell(
+      borderRadius: BorderRadius.circular(18.r),
+      onTap: () async {
+        await openProductDetails(context, productId);
+      },
+      child: Card(
+        elevation: 2,
+        margin: EdgeInsets.only(bottom: 15.h),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18.r),
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(12.w),
+          child: Row(
+            children: [
+              // PRODUCT IMAGE
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12.r),
+                child: Image.network(
+                  image,
+                  width: 85.w,
+                  height: 85.h,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      width: 85.w,
+                      height: 85.h,
+                      color: Colors.grey.shade200,
+                      child: const Icon(
+                        Icons.image_not_supported,
+                        color: Colors.grey,
+                      ),
                     );
+                  },
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) {
+                      return child;
+                    }
+
+                    return SizedBox(
+                      width: 85.w,
+                      height: 85.h,
+                      child: const Center(child: CircularProgressIndicator()),
+                    );
+                  },
+                ),
+              ),
+
+              SizedBox(width: 15.w),
+
+              // PRODUCT DETAILS
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16.sp,
+                      ),
+                    ),
+
+                    SizedBox(height: 5.h),
+
+                    Text(
+                      brand,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: Colors.grey, fontSize: 13.sp),
+                    ),
+
+                    SizedBox(height: 8.h),
+
+                    Text(
+                      price,
+                      style: TextStyle(
+                        color: const Color(0xffA73927),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16.sp,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // REMOVE FROM WISHLIST
+              IconButton(
+                onPressed: () async {
+                  try {
+                    await removeFromWishlist();
+
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Removed from wishlist')),
+                      );
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(
+                        context,
+                      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+                    }
                   }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(
-                      context,
-                    ).showSnackBar(SnackBar(content: Text('Error: $e')));
-                  }
-                }
-              },
-              icon: Icon(Icons.favorite, color: Colors.red, size: 25.sp),
-            ),
-          ],
+                },
+                icon: Icon(Icons.favorite, color: Colors.red, size: 25.sp),
+              ),
+            ],
+          ),
         ),
       ),
     );
