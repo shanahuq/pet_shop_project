@@ -105,79 +105,87 @@ class _OrganicGrainState extends State<OrganicGrain> {
   // ADD TO CART
   // ============================================================
 
-  Future<void> addToCart() async {
-    final user = _auth.currentUser;
+ Future<void> addToCart() async {
+  final user = _auth.currentUser;
 
-    if (user == null) {
-      if (!mounted) return;
+  if (user == null) {
+    if (!mounted) return;
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Please login first')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Please login first'),
+      ),
+    );
 
-      return;
-    }
+    return;
+  }
 
-    try {
-      final product = widget.product;
+  try {
+    final product = widget.product;
 
-      final String id = product['id'].toString();
+    // This must be the Firestore document ID
+    final String productDocId = product['id'].toString();
 
-      final cartItemRef = _firestore
-          .collection('carts')
-          .doc(user.uid)
-          .collection('items')
-          .doc(id);
+    final cartItemRef = FirebaseFirestore.instance
+        .collection('carts')
+        .doc(user.uid)
+        .collection('items')
+        .doc(productDocId);
 
-      final cartItem = await cartItemRef.get();
+    // Check whether product is already in cart
+    final cartItem = await cartItemRef.get();
 
-      if (cartItem.exists) {
-        final data = cartItem.data();
+    if (cartItem.exists) {
+      final data = cartItem.data();
 
-        final dynamic quantityValue = data?['quantity'];
+      final dynamic quantityValue = data?['quantity'];
 
-        int currentQuantity = 0;
+      int currentQuantity = 1;
 
-        if (quantityValue is num) {
-          currentQuantity = quantityValue.toInt();
-        } else if (quantityValue is String) {
-          currentQuantity = int.tryParse(quantityValue) ?? 0;
-        }
-
-        await cartItemRef.update({'quantity': currentQuantity + 1});
-      } else {
-        await cartItemRef.set({
-          'productId': id,
-
-          'name': product['name']?.toString() ?? '',
-
-          'brand': product['brand']?.toString() ?? '',
-
-          'image': product['imageUrl']?.toString() ?? '',
-
-          'price': getPrice(product['price']),
-
-          'quantity': 1,
-
-          'addedAt': FieldValue.serverTimestamp(),
-        });
+      if (quantityValue is num) {
+        currentQuantity = quantityValue.toInt();
+      } else if (quantityValue is String) {
+        currentQuantity = int.tryParse(quantityValue) ?? 1;
       }
 
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${product['name']} added to cart')),
-      );
-    } catch (e) {
-      debugPrint('ADD TO CART ERROR: $e');
-
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to add product to cart: $e')),
-      );
+      // Increase quantity
+      await cartItemRef.update({
+        'quantity': currentQuantity + 1,
+        'productDocId': productDocId,
+      });
+    } else {
+      // Add new product
+      await cartItemRef.set({
+        'productId': product['productId']?.toString() ?? productDocId,
+        'productDocId': productDocId,
+        'name': product['name']?.toString() ?? '',
+        'brand': product['brand']?.toString() ?? '',
+        'image': product['imageUrl']?.toString() ?? '',
+        'price': getPrice(product['price']),
+        'quantity': 1,
+        'addedAt': FieldValue.serverTimestamp(),
+      });
     }
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${product['name']} added to cart'),
+      ),
+    );
+  } catch (e) {
+    debugPrint('ADD TO CART ERROR: $e');
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Failed to add product to cart: $e'),
+      ),
+    );
   }
+}
 
   Future<void> toggleWishlist() async {
     final user = _auth.currentUser;

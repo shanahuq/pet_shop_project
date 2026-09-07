@@ -2,13 +2,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:pet_shop_project/ui/home_page.dart';
-import 'package:pet_shop_project/ui/wish_list_page.dart';
+
 import 'organic_grain.dart';
 
 class SearchCategories extends StatefulWidget {
   final String title;
   final String categoryId;
+
   const SearchCategories({
     super.key,
     required this.title,
@@ -21,21 +21,25 @@ class SearchCategories extends StatefulWidget {
 
 class _SearchCategoriesState extends State<SearchCategories> {
   int selectedTab = 0;
+
   final List<String> tabs = ['All Items', 'Toys', 'Walk Gear', 'Wellness'];
 
   final FirebaseFirestore db = FirebaseFirestore.instance;
 
-  Stream<QuerySnapshot> get productsStream {
-    print('==============================');
-    print('TITLE: "${widget.title}"');
-    print('CATEGORY ID: "${widget.categoryId}"');
-    print('==============================');
+  // ============================================================
+  // PRODUCTS STREAM
+  // ============================================================
 
-    return FirebaseFirestore.instance
+  Stream<QuerySnapshot<Map<String, dynamic>>> get productsStream {
+    return db
         .collection('products')
         .where('categoryId', isEqualTo: widget.categoryId)
         .snapshots();
   }
+
+  // ============================================================
+  // PRICE
+  // ============================================================
 
   double getPrice(dynamic value) {
     if (value is num) {
@@ -52,6 +56,10 @@ class _SearchCategoriesState extends State<SearchCategories> {
     return 0.0;
   }
 
+  // ============================================================
+  // RATING
+  // ============================================================
+
   double getRating(dynamic value) {
     if (value is num) {
       return value.toDouble();
@@ -64,6 +72,211 @@ class _SearchCategoriesState extends State<SearchCategories> {
     return 0.0;
   }
 
+  // ============================================================
+  // GET IMAGE URL
+  // ============================================================
+
+  String getImageUrl(Map<String, dynamic> product) {
+    final possibleFields = [
+      product['imageUrl'],
+      product['imageURL'],
+      product['image'],
+      product['photoUrl'],
+      product['photoURL'],
+    ];
+
+    for (final value in possibleFields) {
+      if (value == null) continue;
+
+      if (value is String) {
+        final url = value.trim();
+
+        if (url.isNotEmpty &&
+            (url.startsWith('http://') || url.startsWith('https://'))) {
+          return url;
+        }
+      }
+
+      // In case imageUrl is accidentally stored as a list.
+      if (value is List && value.isNotEmpty) {
+        for (final image in value) {
+          if (image is String) {
+            final url = image.trim();
+
+            if (url.isNotEmpty &&
+                (url.startsWith('http://') || url.startsWith('https://'))) {
+              return url;
+            }
+          }
+        }
+      }
+
+      // In case imageUrl is stored as a map such as {url: "..."}.
+      if (value is Map) {
+        final mapUrl = value['url'] ?? value['downloadUrl'];
+
+        if (mapUrl is String) {
+          final url = mapUrl.trim();
+
+          if (url.isNotEmpty &&
+              (url.startsWith('http://') || url.startsWith('https://'))) {
+            return url;
+          }
+        }
+      }
+    }
+
+    return '';
+  }
+
+  // ============================================================
+  // IMAGE PLACEHOLDER
+  // ============================================================
+
+  Widget imagePlaceholder() {
+    return Container(
+      color: Colors.grey.shade200,
+      alignment: Alignment.center,
+      child: Icon(
+        Icons.image_not_supported_outlined,
+        color: Colors.grey.shade500,
+        size: 30.sp,
+      ),
+    );
+  }
+
+  // ============================================================
+  // PRODUCT IMAGE
+  // ============================================================
+
+  Widget buildProductImage(Map<String, dynamic> product, double imageHeight) {
+    final imageUrl = getImageUrl(product);
+
+    if (imageUrl.isEmpty) {
+      return imagePlaceholder();
+    }
+
+    return Image.network(
+      imageUrl,
+      width: double.infinity,
+      height: double.infinity,
+      fit: BoxFit.cover,
+      filterQuality: FilterQuality.high,
+
+      // If one Firebase image is broken, only that image becomes
+      // a placeholder. The rest of the grid continues normally.
+      errorBuilder: (context, error, stackTrace) {
+        debugPrint('IMAGE ERROR: ${product['name']} -> $imageUrl');
+
+        return imagePlaceholder();
+      },
+
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) {
+          return child;
+        }
+
+        return Container(
+          color: Colors.grey.shade100,
+          alignment: Alignment.center,
+          child: const CircularProgressIndicator(strokeWidth: 2),
+        );
+      },
+    );
+  }
+
+  // ============================================================
+  // OPEN PRODUCT DETAILS
+  // ============================================================
+
+  Future<void> openProductDetails(
+    BuildContext context,
+    String productId, {
+    String? productName,
+    String? brand,
+  }) async {
+    try {
+      final firestore = FirebaseFirestore.instance;
+
+      DocumentSnapshot<Map<String, dynamic>> productDoc =
+          await firestore.collection('products').doc(productId).get();
+
+      // Try productId field if document ID was not found.
+      if (!productDoc.exists) {
+        final querySnapshot =
+            await firestore
+                .collection('products')
+                .where('productId', isEqualTo: productId)
+                .limit(1)
+                .get();
+
+        if (querySnapshot.docs.isNotEmpty) {
+          productDoc = querySnapshot.docs.first;
+        }
+      }
+
+      // Try name + brand.
+      if (!productDoc.exists && productName != null) {
+        Query<Map<String, dynamic>> query = firestore
+            .collection('products')
+            .where('name', isEqualTo: productName);
+
+        if (brand != null && brand.isNotEmpty) {
+          query = query.where('brand', isEqualTo: brand);
+        }
+
+        final querySnapshot = await query.limit(1).get();
+
+        if (querySnapshot.docs.isNotEmpty) {
+          productDoc = querySnapshot.docs.first;
+        }
+      }
+
+      if (!productDoc.exists) {
+        if (!context.mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Product not found: ${productName ?? productId}'),
+          ),
+        );
+
+        return;
+      }
+
+      final productData = productDoc.data();
+
+      if (productData == null) {
+        return;
+      }
+
+      final product = {
+        ...productData,
+        'id': productDoc.id,
+        'productDocId': productDoc.id,
+      };
+
+      if (!context.mounted) return;
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => OrganicGrain(product: product)),
+      );
+    } catch (e) {
+      debugPrint('OPEN PRODUCT ERROR: $e');
+
+      if (!context.mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to load product: $e')));
+    }
+  }
+
+  // ============================================================
+  // ADD TO CART
+  // ============================================================
+
   Future<void> addToCart(Map<String, dynamic> product) async {
     final user = FirebaseAuth.instance.currentUser;
 
@@ -73,30 +286,39 @@ class _SearchCategoriesState extends State<SearchCategories> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Please login first')));
+
       return;
     }
 
     try {
-      final productId = product['id'].toString();
+      final String productDocId = product['id'].toString();
 
       final cartItemRef = FirebaseFirestore.instance
           .collection('carts')
           .doc(user.uid)
           .collection('items')
-          .doc(productId);
+          .doc(productDocId);
 
       final cartItem = await cartItemRef.get();
 
+      final imageUrl = getImageUrl(product);
+
       if (cartItem.exists) {
-        // Product already exists
-        // Increase quantity by 1
-        await cartItemRef.update({'quantity': FieldValue.increment(1)});
+        await cartItemRef.update({
+          'quantity': FieldValue.increment(1),
+          'productId': productDocId,
+          'productDocId': productDocId,
+          'image': imageUrl,
+          'imageUrl': imageUrl,
+        });
       } else {
-        // First time adding product
         await cartItemRef.set({
-          'productId': productId,
-          'name': product['name'].toString(),
-          'image': product['imageUrl'].toString(),
+          'productId': productDocId,
+          'productDocId': productDocId,
+          'name': product['name']?.toString() ?? '',
+          'brand': product['brand']?.toString() ?? '',
+          'image': imageUrl,
+          'imageUrl': imageUrl,
           'price': getPrice(product['price']),
           'rating': getRating(product['rating']),
           'quantity': 1,
@@ -107,7 +329,9 @@ class _SearchCategoriesState extends State<SearchCategories> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${product['name']} added to cart')),
+        SnackBar(
+          content: Text('${product['name'] ?? 'Product'} added to cart'),
+        ),
       );
     } catch (e) {
       debugPrint('ADD TO CART ERROR: $e');
@@ -119,6 +343,10 @@ class _SearchCategoriesState extends State<SearchCategories> {
       ).showSnackBar(SnackBar(content: Text('Failed to add product: $e')));
     }
   }
+
+  // ============================================================
+  // ADD TO WISHLIST
+  // ============================================================
 
   Future<void> addToWishlist(Map<String, dynamic> product) async {
     final user = FirebaseAuth.instance.currentUser;
@@ -134,18 +362,22 @@ class _SearchCategoriesState extends State<SearchCategories> {
     }
 
     try {
-      final productId = product['id'].toString();
+      final String productDocId = product['id'].toString();
+
+      final imageUrl = getImageUrl(product);
 
       await FirebaseFirestore.instance
           .collection('wishlist')
           .doc(user.uid)
           .collection('items')
-          .doc(productId)
+          .doc(productDocId)
           .set({
-            'productId': productId,
+            'productId': productDocId,
+            'productDocId': productDocId,
             'name': product['name']?.toString() ?? '',
             'brand': product['brand']?.toString() ?? '',
-            'image': product['imageUrl']?.toString() ?? '',
+            'image': imageUrl,
+            'imageUrl': imageUrl,
             'price': getPrice(product['price']),
             'rating': getRating(product['rating']),
             'addedAt': FieldValue.serverTimestamp(),
@@ -161,6 +393,10 @@ class _SearchCategoriesState extends State<SearchCategories> {
     }
   }
 
+  // ============================================================
+  // REMOVE FROM WISHLIST
+  // ============================================================
+
   Future<void> removeFromWishlist(Map<String, dynamic> product) async {
     final user = FirebaseAuth.instance.currentUser;
 
@@ -170,117 +406,191 @@ class _SearchCategoriesState extends State<SearchCategories> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Please login first')));
+
       return;
     }
 
     try {
-      final productId = product['id'].toString();
+      final String productDocId = product['id'].toString();
 
       await FirebaseFirestore.instance
           .collection('wishlist')
           .doc(user.uid)
           .collection('items')
-          .doc(productId)
+          .doc(productDocId)
           .delete();
     } catch (e) {
       debugPrint('WISHLIST REMOVE ERROR: $e');
     }
   }
 
+  // ============================================================
+  // TOGGLE WISHLIST
+  // ============================================================
+
   Future<void> toggleWishlist(Map<String, dynamic> product) async {
     final user = FirebaseAuth.instance.currentUser;
 
     if (user == null) {
+      if (!mounted) return;
+
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Please login first')));
+
       return;
     }
 
-    final productId = product['id'].toString();
+    final String productDocId = product['id'].toString();
 
     final docRef = FirebaseFirestore.instance
         .collection('wishlist')
         .doc(user.uid)
         .collection('items')
-        .doc(productId);
+        .doc(productDocId);
 
-    final doc = await docRef.get();
+    try {
+      final doc = await docRef.get();
 
-    if (doc.exists) {
-      await removeFromWishlist(product);
+      if (doc.exists) {
+        await removeFromWishlist(product);
 
-      if (!mounted) return;
+        if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${product['name']} removed from wishlist')),
-      );
-    } else {
-      await addToWishlist(product);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${product['name']} removed from wishlist')),
+        );
+      } else {
+        await addToWishlist(product);
 
-      if (!mounted) return;
+        if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${product['name']} added to wishlist')),
-      );
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${product['name']} added to wishlist')),
+        );
+      }
+    } catch (e) {
+      debugPrint('TOGGLE WISHLIST ERROR: $e');
     }
   }
+
+  // ============================================================
+  // RESPONSIVE GRID SETTINGS
+  // ============================================================
+
+  int getCrossAxisCount(double width) {
+    if (width >= 1200) {
+      return 5;
+    }
+
+    if (width >= 900) {
+      return 4;
+    }
+
+    if (width >= 600) {
+      return 3;
+    }
+
+    return 2;
+  }
+
+  // ============================================================
+  // RESPONSIVE TITLE SIZE
+  // ============================================================
+
+  double getTitleSize(double width) {
+    if (width < 600) {
+      return 28.sp;
+    }
+
+    if (width < 900) {
+      return 24.sp;
+    }
+
+    return 28.sp;
+  }
+
+  // ============================================================
+  // BUILD
+  // ============================================================
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leadingWidth: 60.w,
-        leading: GestureDetector(
-          onTap: () {
+        elevation: 0,
+        centerTitle: true,
+
+        leading: IconButton(
+          onPressed: () {
             Navigator.pop(context);
           },
-          child: Icon(Icons.arrow_back_ios),
+          icon: Icon(Icons.arrow_back_ios, size: 20.sp),
         ),
-        title: Center(
-          child: Padding(
-            padding: EdgeInsets.only(left: 30.w),
-            child: Text(
-              'PetLife',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 28.sp,
-                color: Color(0xffA73927),
-              ),
-            ),
+
+        title: Text(
+          'PetLife',
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 26.sp,
+            color: const Color(0xffA73927),
           ),
         ),
+
         actions: [
           Padding(
-            padding: EdgeInsets.only(right: 40.w),
+            padding: EdgeInsets.only(right: 20.w),
             child: Icon(
               Icons.notifications_none,
-              color: Color(0xffA73927),
+              color: const Color(0xffA73927),
               size: 25.sp,
             ),
           ),
         ],
       ),
-      body: SafeArea(
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 30.w),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(height: 30.h),
 
-                Text(
-                  widget.title,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 28.sp,
-                    color: Color(0xff1B1C1C),
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final double screenWidth = constraints.maxWidth;
+
+            final bool isLandscape =
+                MediaQuery.orientationOf(context) == Orientation.landscape;
+
+            final double horizontalPadding =
+                screenWidth < 600
+                    ? 20.w
+                    : isLandscape
+                    ? 25.w
+                    : 30.w;
+
+            return SingleChildScrollView(
+              padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // ==================================================
+                  // TOP TITLE
+                  // ==================================================
+                  SizedBox(height: isLandscape ? 15.h : 25.h),
+
+                  Text(
+                    widget.title,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: getTitleSize(screenWidth),
+                      color: const Color(0xff1B1C1C),
+                    ),
                   ),
-                ),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16.w),
-                  child: Row(
+
+                  SizedBox(height: 10.h),
+
+                  // ==================================================
+                  // DESCRIPTION + FILTER
+                  // ==================================================
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Expanded(
                         child: Text(
@@ -295,15 +605,17 @@ class _SearchCategoriesState extends State<SearchCategories> {
                         ),
                       ),
 
-                      SizedBox(width: 8.w),
+                      SizedBox(width: 10.w),
 
                       OutlinedButton.icon(
                         onPressed: () {},
+
                         icon: Icon(
                           Icons.tune,
                           color: Colors.black,
                           size: 18.sp,
                         ),
+
                         label: Text(
                           'Filter',
                           style: TextStyle(
@@ -312,431 +624,770 @@ class _SearchCategoriesState extends State<SearchCategories> {
                             color: Colors.black,
                           ),
                         ),
+
                         style: OutlinedButton.styleFrom(
                           backgroundColor: const Color(0xffF0EDED),
+
                           side: const BorderSide(color: Color(0xffDFC0BA)),
+
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16.r),
                           ),
+
                           padding: EdgeInsets.symmetric(horizontal: 8.w),
+
                           minimumSize: Size.zero,
+
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
                       ),
                     ],
                   ),
-                ),
-                SizedBox(height: 10.h),
-                SizedBox(
-                  height: 45.h,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    separatorBuilder: (_, __) => SizedBox(width: 10.w),
-                    itemCount: tabs.length,
-                    itemBuilder: (context, index) {
-                      final bool isSelected = selectedTab == index;
-                      return GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            selectedTab = index;
-                          });
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(microseconds: 250),
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 18.w,
-                            vertical: 10.h,
-                          ),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(20.r),
-                            color:
-                                isSelected ? Color(0xffF27059) : Colors.white,
-                            border: Border.all(
-                              color:
-                                  isSelected ? Colors.white : Color(0xffDFC0BA),
+
+                  SizedBox(height: 15.h),
+
+                  // ==================================================
+                  // CATEGORY TABS
+                  // ==================================================
+                  SizedBox(
+                    height: 45.h,
+
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+
+                      separatorBuilder: (_, __) => SizedBox(width: 10.w),
+
+                      itemCount: tabs.length,
+
+                      itemBuilder: (context, index) {
+                        final bool isSelected = selectedTab == index;
+
+                        return GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              selectedTab = index;
+                            });
+                          },
+
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 250),
+
+                            padding: EdgeInsets.symmetric(
+                              horizontal: screenWidth < 600 ? 18.w : 15.w,
+                              vertical: 10.h,
                             ),
-                          ),
-                          child: Center(
-                            child: Text(
-                              tabs[index],
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 12.sp,
-                                color: Color(0xff650700),
+
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(20.r),
+
+                              color:
+                                  isSelected
+                                      ? const Color(0xffF27059)
+                                      : Colors.white,
+
+                              border: Border.all(
+                                color:
+                                    isSelected
+                                        ? Colors.white
+                                        : const Color(0xffDFC0BA),
+                              ),
+                            ),
+
+                            child: Center(
+                              child: Text(
+                                tabs[index],
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 12.sp,
+                                  color: const Color(0xff650700),
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      );
-                    },
+                        );
+                      },
+                    ),
                   ),
-                ),
-                SizedBox(height: 20.h),
-                Builder(
-                  builder: (context) {
-                    if (selectedTab == 0) {
-                      return StreamBuilder<QuerySnapshot>(
-                        stream: productsStream,
-                        builder: (context, snapshot) {
-                          if (snapshot.hasData) {
-                            print(
-                              "Products found = ${snapshot.data!.docs.length}",
-                            );
-                          }
 
-                          if (snapshot.connectionState ==
-                              ConnectionState.waiting) {
-                            return const Center(
-                              child: CircularProgressIndicator(),
-                            );
-                          }
+                  SizedBox(height: 20.h),
 
-                          if (snapshot.hasError) {
-                            return Text(snapshot.error.toString());
-                          }
+                  // ==================================================
+                  // PRODUCTS
+                  // ==================================================
+                  if (selectedTab == 0)
+                    StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                      stream: productsStream,
 
-                          if (!snapshot.hasData ||
-                              snapshot.data!.docs.isEmpty) {
-                            return const Center(
-                              child: Text("No products found"),
-                            );
-                          }
+                      builder: (context, snapshot) {
+                        // ------------------------------------------
+                        // LOADING
+                        // ------------------------------------------
 
-                          final products = snapshot.data!.docs;
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        }
 
-                          // your GridView.builder...
-                          print("Products found: ${products.length}");
-                          for (var doc in snapshot.data!.docs) {
-                            print(doc.data());
-                          }
-                          return GridView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
+                        // ------------------------------------------
+                        // ERROR
+                        // ------------------------------------------
 
-                            itemCount: products.length,
+                        if (snapshot.hasError) {
+                          return Center(
+                            child: Text(
+                              'Error loading products:\n'
+                              '${snapshot.error}',
+                              textAlign: TextAlign.center,
+                            ),
+                          );
+                        }
 
-                            gridDelegate:
-                                SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 2,
-                                  crossAxisSpacing: 15.w,
-                                  mainAxisSpacing: 15.h,
-                                  childAspectRatio: 0.55,
-                                ),
+                        // ------------------------------------------
+                        // EMPTY
+                        // ------------------------------------------
 
-                            itemBuilder: (context, index) {
-                              final item = {
-                                ...(products[index].data()
-                                    as Map<String, dynamic>),
-                                'id': products[index].id,
-                              };
-                              return GestureDetector(
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder:
-                                          (context) =>
-                                              OrganicGrain(product: item),
-                                    ),
-                                  );
-                                },
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(16.r),
-                                    color: Colors.white,
-                                    border: Border.all(
-                                      color: const Color(0xffFFFFFF),
-                                    ),
+                        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                          return const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(30),
+                              child: Text('No products found'),
+                            ),
+                          );
+                        }
+
+                        final products = snapshot.data!.docs;
+
+                        // ==================================================
+                        // GRID
+                        // ==================================================
+
+                        return LayoutBuilder(
+                          builder: (context, gridConstraints) {
+                            final double width = gridConstraints.maxWidth;
+
+                            final int crossAxisCount = getCrossAxisCount(width);
+
+                            final double spacing = width < 600 ? 12.w : 15.w;
+
+                            // ==================================================
+                            // CARD HEIGHT
+                            // ==================================================
+
+                            final double cardHeight;
+
+                            if (width < 500) {
+                              cardHeight = 375;
+                            } else if (width < 700) {
+                              cardHeight = 365;
+                            } else if (width < 1000) {
+                              cardHeight = 375;
+                            } else {
+                              cardHeight = 395;
+                            }
+
+                            // ==================================================
+                            // IMAGE HEIGHT
+                            // ==================================================
+
+                            final double imageHeight = isLandscape ? 120 : 140;
+
+                            return GridView.builder(
+                              shrinkWrap: true,
+
+                              physics: const NeverScrollableScrollPhysics(),
+
+                              padding: EdgeInsets.zero,
+
+                              itemCount: products.length,
+
+                              gridDelegate:
+                                  SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: crossAxisCount,
+
+                                    crossAxisSpacing: spacing,
+
+                                    mainAxisSpacing: spacing,
+
+                                    mainAxisExtent: cardHeight,
                                   ),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Stack(
-                                        children: [
-                                          ClipRRect(
-                                            borderRadius: BorderRadius.circular(
-                                              16.r,
-                                            ),
-                                            child: SizedBox(
-                                              height: 140.h,
-                                              width: double.infinity,
-                                              child: Image.network(
-                                                item['imageUrl']?.toString() ??
-                                                    '',
-                                                fit: BoxFit.cover,
-                                                errorBuilder: (
-                                                  context,
-                                                  error,
-                                                  stackTrace,
-                                                ) {
-                                                  return Container(
-                                                    color: Colors.grey.shade200,
-                                                    child: const Center(
-                                                      child: Icon(
-                                                        Icons
-                                                            .image_not_supported,
-                                                        size: 40,
-                                                        color: Colors.grey,
-                                                      ),
-                                                    ),
-                                                  );
-                                                },
-                                                loadingBuilder: (
-                                                  context,
-                                                  child,
-                                                  loadingProgress,
-                                                ) {
-                                                  if (loadingProgress == null) {
-                                                    return child;
-                                                  }
 
-                                                  return const Center(
-                                                    child:
-                                                        CircularProgressIndicator(),
-                                                  );
-                                                },
-                                              ),
-                                            ),
-                                          ),
+                              itemBuilder: (context, index) {
+                                final productDoc = products[index];
+                                final double cardWidth =
+                                    (gridConstraints.maxWidth -
+                                        ((crossAxisCount - 1) * spacing)) /
+                                    crossAxisCount;
 
-                                          Positioned(
-                                            top: 8.h,
-                                            right: 12.w,
-                                            child: StreamBuilder<
-                                              DocumentSnapshot
-                                            >(
-                                              stream:
-                                                  FirebaseFirestore.instance
-                                                      .collection('wishlist')
-                                                      .doc(
-                                                        FirebaseAuth
-                                                            .instance
-                                                            .currentUser
-                                                            ?.uid,
-                                                      )
-                                                      .collection('items')
-                                                      .doc(
-                                                        item['id'].toString(),
-                                                      )
-                                                      .snapshots(),
-                                              builder: (context, snapshot) {
-                                                final isFavorite =
-                                                    snapshot.data?.exists ??
-                                                    false;
+                                final double favoriteSize =
+                                    isLandscape
+                                        ? (cardWidth * 0.20).clamp(30.0, 40.0)
+                                        : (cardWidth * 0.20).clamp(32.0, 44.0);
 
-                                                return GestureDetector(
-                                                  onTap: () async {
-                                                    await toggleWishlist(item);
-                                                  },
-                                                  child: CircleAvatar(
-                                                    radius: 16.r,
-                                                    backgroundColor:
-                                                        Colors.white,
-                                                    child: Icon(
-                                                      isFavorite
-                                                          ? Icons.favorite
-                                                          : Icons
-                                                              .favorite_border,
-                                                      color:
-                                                          isFavorite
-                                                              ? const Color(
-                                                                0xffA73927,
-                                                              )
-                                                              : Colors.grey,
-                                                    ),
-                                                  ),
-                                                );
-                                              },
-                                            ),
-                                          ),
-                                        ],
+                                final double favoriteIconSize =
+                                    favoriteSize * 0.55;
+
+                                // REAL FIRESTORE DOCUMENT ID
+                                final item = {
+                                  ...productDoc.data(),
+
+                                  'id': productDoc.id,
+
+                                  'productDocId': productDoc.id,
+                                };
+
+                                final double price = getPrice(item['price']);
+
+                                final double rating = getRating(item['rating']);
+
+                                return Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+
+                                    borderRadius: BorderRadius.circular(15.r),
+
+                                    boxShadow: const [
+                                      BoxShadow(
+                                        blurRadius: 8,
+                                        spreadRadius: 1,
+                                        offset: Offset(0, 3),
+                                        color: Colors.black12,
                                       ),
+                                    ],
+                                  ),
 
-                                      SizedBox(height: 10.h),
+                                  clipBehavior: Clip.antiAlias,
 
-                                      Row(
-                                        children: [
-                                          Icon(
-                                            Icons.star,
-                                            color: const Color(0xffA73927),
-                                            size: 16.sp,
-                                          ),
-                                          SizedBox(width: 4.w),
-                                          Text(
-                                            item['rating'].toString(),
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.w600,
-                                              fontSize: 12.sp,
-                                              color: const Color(0xff57423D),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
+                                  child: Padding(
+                                    padding: EdgeInsets.all(
+                                      isLandscape ? 7.w : 8.w,
+                                    ),
 
-                                      SizedBox(height: 8.h),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.center,
 
-                                      Text(
-                                        item['name'],
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w400,
-                                          fontSize: 16.sp,
-                                          color: const Color(0xff1B1C1C),
-                                        ),
-                                      ),
+                                      children: [
+                                        // ==================================================
+                                        // PRODUCT IMAGE
+                                        // ==================================================
+                                        SizedBox(
+                                          width: double.infinity,
 
-                                      SizedBox(height: 5.h),
+                                          height: imageHeight,
 
-                                      Text(
-                                        item['price'].toString(),
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w400,
-                                          fontSize: 18.sp,
-                                          color: const Color(0xffA73927),
-                                        ),
-                                      ),
-
-                                      SizedBox(height: 10.h),
-
-                                      SizedBox(
-                                        width: double.infinity,
-                                        height: 45.h,
-                                        child: OutlinedButton(
-                                          style: OutlinedButton.styleFrom(
-                                            backgroundColor: const Color(
-                                              0xffA73927,
-                                            ),
-                                            side: const BorderSide(
-                                              color: Color(0xffA73927),
-                                            ),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(16.r),
-                                            ),
-                                            padding: EdgeInsets.zero,
-                                          ),
-                                          onPressed: () async {
-                                            await addToCart(item);
-
-                                            if (!context.mounted) return;
-
-                                            // Navigate to your CartPage here
-                                            // Navigator.push(
-                                            //   context,
-                                            //   MaterialPageRoute(
-                                            //     builder: (context) => const CartPage(),
-                                            //   ),
-                                            // );
-                                          },
-                                          child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
+                                          child: Stack(
                                             children: [
-                                              Icon(
-                                                Icons.shopping_cart_outlined,
-                                                color: Colors.white,
-                                                size: 20.sp,
+                                              Positioned.fill(
+                                                child: ClipRRect(
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                        12.r,
+                                                      ),
+
+                                                  child: buildProductImage(
+                                                    item,
+                                                    imageHeight,
+                                                  ),
+                                                ),
                                               ),
-                                              SizedBox(width: 8.w),
-                                              Text(
-                                                'Add to Cart',
-                                                style: TextStyle(
-                                                  fontWeight: FontWeight.w600,
-                                                  fontSize: 12.sp,
-                                                  color: Colors.white,
+
+                                              // ==================================================
+                                              // WISHLIST
+                                              // ==================================================
+                                              Positioned(
+                                                // Responsive position
+                                                top: favoriteSize * 0.10,
+                                                right: favoriteSize * 0.10,
+
+                                                child: StreamBuilder<
+                                                  DocumentSnapshot<
+                                                    Map<String, dynamic>
+                                                  >
+                                                >(
+                                                  stream:
+                                                      FirebaseFirestore.instance
+                                                          .collection(
+                                                            'wishlist',
+                                                          )
+                                                          .doc(
+                                                            FirebaseAuth
+                                                                .instance
+                                                                .currentUser
+                                                                ?.uid,
+                                                          )
+                                                          .collection('items')
+                                                          .doc(
+                                                            item['id']
+                                                                .toString(),
+                                                          )
+                                                          .snapshots(),
+
+                                                  builder: (context, snapshot) {
+                                                    final bool isWishlisted =
+                                                        snapshot.data?.exists ??
+                                                        false;
+
+                                                    // ============================================
+                                                    // RESPONSIVE CIRCLE SIZE
+                                                    // ============================================
+
+                                                    // final double cardWidth =
+                                                    //     (gridConstraints
+                                                    //             .maxWidth -
+                                                    //         ((crossAxisCount -
+                                                    //                 1) *
+                                                    //             spacing)) /
+                                                    //     crossAxisCount;
+
+                                                    // final double
+                                                    // favoriteCircleSize =
+                                                    //     isLandscape
+                                                    //         ? (cardWidth * 0.20)
+                                                    //             .clamp(
+                                                    //               30.0,
+                                                    //               40.0,
+                                                    //             )
+                                                    //         : (cardWidth * 0.20)
+                                                    //             .clamp(
+                                                    //               32.0,
+                                                    //               44.0,
+                                                    //             );
+
+                                                    // final double
+                                                    // favoriteIconSize =
+                                                    //     favoriteCircleSize *
+                                                    //     0.55;
+
+                                                    return GestureDetector(
+                                                      behavior:
+                                                          HitTestBehavior
+                                                              .opaque,
+
+                                                      onTap: () {
+                                                        toggleWishlist(item);
+                                                      },
+
+                                                      child: AnimatedContainer(
+                                                        duration:
+                                                            const Duration(
+                                                              milliseconds: 180,
+                                                            ),
+
+                                                        width: favoriteSize,
+                                                        height: favoriteSize,
+
+                                                        decoration: BoxDecoration(
+                                                          color: Colors.white,
+
+                                                          shape:
+                                                              BoxShape.circle,
+
+                                                          boxShadow: [
+                                                            BoxShadow(
+                                                              color: Colors
+                                                                  .black
+                                                                  .withOpacity(
+                                                                    0.10,
+                                                                  ),
+                                                              blurRadius: 4,
+                                                              spreadRadius: 0.5,
+                                                              offset:
+                                                                  const Offset(
+                                                                    0,
+                                                                    1,
+                                                                  ),
+                                                            ),
+                                                          ],
+                                                        ),
+
+                                                        child: Center(
+                                                          child: AnimatedSwitcher(
+                                                            duration:
+                                                                const Duration(
+                                                                  milliseconds:
+                                                                      180,
+                                                                ),
+
+                                                            child: Icon(
+                                                              isWishlisted
+                                                                  ? Icons
+                                                                      .favorite
+                                                                  : Icons
+                                                                      .favorite_border,
+
+                                                              key: ValueKey(
+                                                                isWishlisted,
+                                                              ),
+
+                                                              size:
+                                                                  favoriteIconSize,
+
+                                                              color:
+                                                                  isWishlisted
+                                                                      ? Colors
+                                                                          .red
+                                                                      : const Color(
+                                                                        0xffA73927,
+                                                                      ),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    );
+                                                  },
                                                 ),
                                               ),
                                             ],
                                           ),
                                         ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
-                          );
-                        },
-                      );
-                    }
 
-                    return const Center(child: Text('no items'));
-                  },
-                ),
-                SizedBox(height: 30.h),
-                Center(
-                  child: Text(
-                    'Showing 6 of 24 items',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w400,
-                      fontSize: 12.sp,
-                      color: Color(0xff57423D),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 20.h),
-                Center(
-                  child: SizedBox(
-                    width: 150.w,
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Container(
-                            height: 4.h,
-                            width: 150.w,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.only(
-                                topLeft: Radius.circular(20.r),
-                                bottomLeft: Radius.circular(20.r),
-                              ),
-                              color: Color(0xffA73927),
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          child: Container(
-                            height: 4.h,
-                            width: 150.w,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.only(
-                                topRight: Radius.circular(20.r),
-                                bottomRight: Radius.circular(20.r),
-                              ),
-                              color: Color(0xffE4E2E1),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                SizedBox(height: 20.h),
-                Center(
-                  child: OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: Size(190.w, 55.h),
-                      side: BorderSide(color: Color(0xffA73927)),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18.r),
+                                        // ==================================================
+                                        // SPACE AFTER IMAGE
+                                        // ==================================================
+                                        SizedBox(height: 8.h),
+
+                                        // ==================================================
+                                        // CONTENT
+                                        // ==================================================
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.center,
+
+                                            children: [
+                                              // ==================================================
+                                              // RATING
+                                              // ==================================================
+                                              SizedBox(
+                                                height: 22,
+
+                                                child: Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.center,
+
+                                                  children: [
+                                                    const Icon(
+                                                      Icons.star,
+                                                      color: Colors.amber,
+                                                      size: 16,
+                                                    ),
+
+                                                    const SizedBox(width: 3),
+
+                                                    Text(
+                                                      rating.toStringAsFixed(1),
+
+                                                      style: const TextStyle(
+                                                        fontSize: 12,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+
+                                              const SizedBox(height: 3),
+
+                                              // ==================================================
+                                              // BRAND
+                                              // ==================================================
+                                              SizedBox(
+                                                width: double.infinity,
+
+                                                height: 28,
+
+                                                child: Text(
+                                                  item['brand']
+                                                              ?.toString()
+                                                              .trim()
+                                                              .isNotEmpty ==
+                                                          true
+                                                      ? item['brand'].toString()
+                                                      : item['category']
+                                                              ?.toString() ??
+                                                          '',
+
+                                                  maxLines: 2,
+
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+
+                                                  textAlign: TextAlign.center,
+
+                                                  style: TextStyle(
+                                                    fontSize:
+                                                        isLandscape
+                                                            ? 10.sp
+                                                            : 11.sp,
+
+                                                    fontWeight: FontWeight.w500,
+
+                                                    color: const Color(
+                                                      0xff57423D,
+                                                    ),
+
+                                                    height: 1.2,
+                                                  ),
+                                                ),
+                                              ),
+
+                                              // ==================================================
+                                              // SPACE
+                                              // ==================================================
+                                              SizedBox(height: 4.h),
+
+                                              // ==================================================
+                                              // PRODUCT NAME
+                                              // ==================================================
+                                              SizedBox(
+                                                width: double.infinity,
+
+                                                height: 55,
+
+                                                child: Text(
+                                                  item['name']?.toString() ??
+                                                      '',
+
+                                                  maxLines: 2,
+
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+
+                                                  textAlign: TextAlign.center,
+
+                                                  style: TextStyle(
+                                                    fontSize:
+                                                        isLandscape
+                                                            ? 11.sp
+                                                            : 13.sp,
+
+                                                    fontWeight: FontWeight.w600,
+
+                                                    height: 1.25,
+
+                                                    color: const Color(
+                                                      0xff1B1C1C,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+
+                                              // ==================================================
+                                              // PRICE
+                                              // ==================================================
+                                              SizedBox(
+                                                height: 26,
+
+                                                child: FittedBox(
+                                                  fit: BoxFit.scaleDown,
+
+                                                  child: Text(
+                                                    '\$${price.toStringAsFixed(2)}',
+
+                                                    maxLines: 1,
+
+                                                    style: TextStyle(
+                                                      color: const Color(
+                                                        0xffA73927,
+                                                      ),
+
+                                                      fontWeight:
+                                                          FontWeight.bold,
+
+                                                      fontSize:
+                                                          isLandscape
+                                                              ? 13.sp
+                                                              : 15.sp,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+
+                                              // ==================================================
+                                              // SPACE BEFORE BUTTON
+                                              // ==================================================
+                                              SizedBox(height: 8.h),
+
+                                              // ==================================================
+                                              // ADD TO CART
+                                              // ==================================================
+                                              SizedBox(
+                                                width: double.infinity,
+
+                                                height: isLandscape ? 36 : 40,
+
+                                                child: ElevatedButton(
+                                                  onPressed: () async {
+                                                    await addToCart(item);
+                                                  },
+
+                                                  style: ElevatedButton.styleFrom(
+                                                    backgroundColor:
+                                                        const Color(0xff006971),
+
+                                                    padding: EdgeInsets.zero,
+
+                                                    minimumSize: Size.zero,
+
+                                                    tapTargetSize:
+                                                        MaterialTapTargetSize
+                                                            .shrinkWrap,
+
+                                                    shape: RoundedRectangleBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            8.r,
+                                                          ),
+                                                    ),
+                                                  ),
+
+                                                  child: Text(
+                                                    'Add to Cart',
+
+                                                    maxLines: 1,
+
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+
+                                                    style: TextStyle(
+                                                      fontSize: 12.sp,
+
+                                                      fontWeight:
+                                                          FontWeight.w500,
+
+                                                      color: Colors.white,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                        );
+                      },
+                    )
+                  // ==================================================
+                  // OTHER TABS
+                  // ==================================================
+                  else
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(40),
+                        child: Text('No items'),
                       ),
                     ),
-                    onPressed: () {},
+
+                  SizedBox(height: 30.h),
+
+                  // ==================================================
+                  // SHOWING ITEMS
+                  // ==================================================
+                  Center(
                     child: Text(
-                      'Load More Essentials',
+                      'Showing 6 of 24 items',
+
                       style: TextStyle(
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w400,
                         fontSize: 12.sp,
-                        color: Color(0xffA73927),
+                        color: const Color(0xff57423D),
                       ),
                     ),
                   ),
-                ),
-                SizedBox(height: 30.h),
-              ],
-            ),
-          ),
+
+                  SizedBox(height: 20.h),
+
+                  // ==================================================
+                  // PROGRESS BAR
+                  // ==================================================
+                  Center(
+                    child: SizedBox(
+                      width: 150.w,
+
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Container(
+                              height: 4.h,
+
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.only(
+                                  topLeft: Radius.circular(20.r),
+                                  bottomLeft: Radius.circular(20.r),
+                                ),
+
+                                color: const Color(0xffA73927),
+                              ),
+                            ),
+                          ),
+
+                          Expanded(
+                            child: Container(
+                              height: 4.h,
+
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.only(
+                                  topRight: Radius.circular(20.r),
+                                  bottomRight: Radius.circular(20.r),
+                                ),
+
+                                color: const Color(0xffE4E2E1),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  SizedBox(height: 20.h),
+
+                  // ==================================================
+                  // LOAD MORE
+                  // ==================================================
+                  Center(
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: Size(
+                          screenWidth < 600 ? 190.w : 210.w,
+                          55.h,
+                        ),
+
+                        side: const BorderSide(color: Color(0xffA73927)),
+
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18.r),
+                        ),
+                      ),
+
+                      onPressed: () {},
+
+                      child: Text(
+                        'Load More Essentials',
+
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12.sp,
+                          color: const Color(0xffA73927),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  SizedBox(height: 30.h),
+                ],
+              ),
+            );
+          },
         ),
       ),
     );

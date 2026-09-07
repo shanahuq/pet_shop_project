@@ -5,15 +5,24 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:pet_shop_project/ui/checkout_page.dart';
 import 'organic_grain.dart';
 
-Future<void> openProductDetails(BuildContext context, String productId) async {
+Future<void> openProductDetails(
+  BuildContext context,
+  String productId, {
+  String? productName,
+  String? brand,
+}) async {
   try {
     final firestore = FirebaseFirestore.instance;
 
-    // First, try using productId as the Firestore document ID
+    // --------------------------------------------------
+    // STEP 1: Try productId as Firestore document ID
+    // --------------------------------------------------
     DocumentSnapshot<Map<String, dynamic>> productDoc =
         await firestore.collection('products').doc(productId).get();
 
-    // If not found, search by the productId field
+    // --------------------------------------------------
+    // STEP 2: If not found, try the productId field
+    // --------------------------------------------------
     if (!productDoc.exists) {
       final querySnapshot =
           await firestore
@@ -22,26 +31,63 @@ Future<void> openProductDetails(BuildContext context, String productId) async {
               .limit(1)
               .get();
 
-      if (querySnapshot.docs.isEmpty) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Product not found: $productId')),
-          );
-        }
-        return;
+      if (querySnapshot.docs.isNotEmpty) {
+        productDoc = querySnapshot.docs.first;
       }
-
-      productDoc = querySnapshot.docs.first;
     }
 
+    // --------------------------------------------------
+    // STEP 3: If still not found, search by name + brand
+    // This fixes your existing cart items such as Pedigree.
+    // --------------------------------------------------
+    if (!productDoc.exists && productName != null) {
+      Query<Map<String, dynamic>> query = firestore
+          .collection('products')
+          .where('name', isEqualTo: productName);
+
+      if (brand != null && brand.isNotEmpty) {
+        query = query.where('brand', isEqualTo: brand);
+      }
+
+      final querySnapshot = await query.limit(1).get();
+
+      if (querySnapshot.docs.isNotEmpty) {
+        productDoc = querySnapshot.docs.first;
+      }
+    }
+
+    // --------------------------------------------------
+    // STEP 4: Nothing found
+    // --------------------------------------------------
+    if (!productDoc.exists) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Product not found: $productName')),
+        );
+      }
+      return;
+    }
+
+    // --------------------------------------------------
+    // STEP 5: Get product data
+    // --------------------------------------------------
     final productData = productDoc.data();
 
     if (productData == null) {
       return;
     }
 
-    final product = {...productData, 'id': productDoc.id};
+    // IMPORTANT:
+    // productDoc.id is the REAL Firestore document ID.
+    final product = {
+      ...productData,
+      'id': productDoc.id,
+      'productDocId': productDoc.id,
+    };
 
+    // --------------------------------------------------
+    // STEP 6: Open product details
+    // --------------------------------------------------
     if (!context.mounted) return;
 
     Navigator.push(
@@ -307,6 +353,7 @@ class CartTab extends StatelessWidget {
 
                     return CartItem(
                       productId: doc.id,
+                      productDocId: data['productDocId']?.toString(),
                       userId: userId,
                       image: data['image']?.toString() ?? '',
                       name: data['name']?.toString() ?? '',
@@ -411,6 +458,7 @@ class CartTab extends StatelessWidget {
 
 class CartItem extends StatelessWidget {
   final String productId;
+  final String? productDocId;
   final String userId;
   final String image;
   final String name;
@@ -421,6 +469,7 @@ class CartItem extends StatelessWidget {
   const CartItem({
     super.key,
     required this.productId,
+    this.productDocId,
     required this.userId,
     required this.image,
     required this.name,
@@ -456,7 +505,12 @@ class CartItem extends StatelessWidget {
     return InkWell(
       borderRadius: BorderRadius.circular(18.r),
       onTap: () async {
-        await openProductDetails(context, productId);
+        await openProductDetails(
+          context,
+          productDocId ?? productId,
+          productName: name,
+          brand: brand,
+        );
       },
       child: Card(
         elevation: 2,
