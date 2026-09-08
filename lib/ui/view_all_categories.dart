@@ -31,24 +31,15 @@ class ViewAllCategories extends StatelessWidget {
 
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
+            return const Center(child: CircularProgressIndicator());
           }
 
           if (snapshot.hasError) {
-            return Center(
-              child: Text(
-                'Error: ${snapshot.error}',
-              ),
-            );
+            return Center(child: Text('Error: ${snapshot.error}'));
           }
 
-          if (!snapshot.hasData ||
-              snapshot.data!.docs.isEmpty) {
-            return const Center(
-              child: Text('No categories found'),
-            );
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return const Center(child: Text('No categories found'));
           }
 
           final categories = snapshot.data!.docs;
@@ -56,22 +47,25 @@ class ViewAllCategories extends StatelessWidget {
           return GridView.builder(
             padding: EdgeInsets.all(20.w),
             itemCount: categories.length,
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount:
+                  MediaQuery.of(context).orientation == Orientation.landscape
+                      ? 3
+                      : 2,
 
-            gridDelegate:
-                SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 15.w,
+              // This controls the space between cards
+              crossAxisSpacing: 20.w,
+
               mainAxisSpacing: 15.h,
-              childAspectRatio: 1,
+
+              childAspectRatio: 0.95,
             ),
 
             itemBuilder: (context, index) {
               final categoryDoc = categories[index];
 
-              final data =
-                  categoryDoc.data() as Map<String, dynamic>;
+              final data = categoryDoc.data() as Map<String, dynamic>;
 
-              // Get the actual Firestore document ID
               final String categoryId = categoryDoc.id;
 
               return GestureDetector(
@@ -79,57 +73,91 @@ class ViewAllCategories extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => SearchCategories(
-                        title: data['name'] ?? '',
-                        categoryId: categoryId,
-                      ),
+                      builder:
+                          (context) => SearchCategories(
+                            title: data['name'] ?? '',
+                            categoryId: categoryId,
+                          ),
                     ),
                   );
                 },
 
                 child: Card(
                   elevation: 3,
-
                   shape: RoundedRectangleBorder(
-                    borderRadius:
-                        BorderRadius.circular(15.r),
+                    borderRadius: BorderRadius.circular(15.r),
                   ),
 
-                  child: Padding(
-                    padding: EdgeInsets.all(12.w),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final double imageSize = (constraints.maxWidth * 0.50)
+                          .clamp(70.0, 120.0);
 
-                    child: Column(
-                      mainAxisAlignment:
-                          MainAxisAlignment.center,
+                      return Padding(
+                        padding: EdgeInsets.all(10.w),
 
-                      children: [
-                        CircleAvatar(
-                          radius: 35.r,
-                          backgroundColor:
-                              Colors.grey.shade300,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: imageSize,
+                              height: imageSize,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.grey.shade300,
+                              ),
+                              child: ClipOval(
+                                child: Image.network(
+                                  data['imageUrl'] ?? '',
+                                  width: imageSize,
+                                  height: imageSize,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Icon(
+                                      Icons.image_not_supported_outlined,
+                                      size: imageSize * 0.4,
+                                      color: Colors.grey.shade600,
+                                    );
+                                  },
+                                  loadingBuilder: (
+                                    context,
+                                    child,
+                                    loadingProgress,
+                                  ) {
+                                    if (loadingProgress == null) {
+                                      return child;
+                                    }
 
-                          backgroundImage:
-                              NetworkImage(
-                            data['imageUrl'] ?? '',
-                          ),
+                                    return Center(
+                                      child: SizedBox(
+                                        width: 25.w,
+                                        height: 25.w,
+                                        child: const CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+
+                            SizedBox(height: 10.h),
+
+                            Text(
+                              data['name'] ?? '',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 14.sp,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
                         ),
-
-                        SizedBox(height: 12.h),
-
-                        Text(
-                          data['name'] ?? '',
-                          maxLines: 1,
-                          overflow:
-                              TextOverflow.ellipsis,
-
-                          style: TextStyle(
-                            fontSize: 14.sp,
-                            fontWeight:
-                                FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
                 ),
               );

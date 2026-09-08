@@ -3,8 +3,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-import 'package:pet_shop_project/ui/wish_list_page.dart';
-
 class OrganicGrain extends StatefulWidget {
   final Map<String, dynamic> product;
 
@@ -15,16 +13,18 @@ class OrganicGrain extends StatefulWidget {
 }
 
 class _OrganicGrainState extends State<OrganicGrain> {
-  bool isSelected = true;
-
   String selectedWeight = '2kg';
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
+  // ============================================================
+  // PRODUCT ID
+  // ============================================================
+
   String get productId {
-    return widget.product['id'].toString();
+    return widget.product['id']?.toString() ?? '';
   }
 
   // ============================================================
@@ -79,7 +79,6 @@ class _OrganicGrainState extends State<OrganicGrain> {
 
   String formatReviewDate(DateTime date) {
     final now = DateTime.now();
-
     final difference = now.difference(date);
 
     if (difference.inMinutes < 60) {
@@ -105,87 +104,96 @@ class _OrganicGrainState extends State<OrganicGrain> {
   // ADD TO CART
   // ============================================================
 
- Future<void> addToCart() async {
-  final user = _auth.currentUser;
+  Future<void> addToCart() async {
+    final user = _auth.currentUser;
 
-  if (user == null) {
-    if (!mounted) return;
+    if (user == null) {
+      if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Please login first'),
-      ),
-    );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please login first')));
 
-    return;
-  }
-
-  try {
-    final product = widget.product;
-
-    // This must be the Firestore document ID
-    final String productDocId = product['id'].toString();
-
-    final cartItemRef = FirebaseFirestore.instance
-        .collection('carts')
-        .doc(user.uid)
-        .collection('items')
-        .doc(productDocId);
-
-    // Check whether product is already in cart
-    final cartItem = await cartItemRef.get();
-
-    if (cartItem.exists) {
-      final data = cartItem.data();
-
-      final dynamic quantityValue = data?['quantity'];
-
-      int currentQuantity = 1;
-
-      if (quantityValue is num) {
-        currentQuantity = quantityValue.toInt();
-      } else if (quantityValue is String) {
-        currentQuantity = int.tryParse(quantityValue) ?? 1;
-      }
-
-      // Increase quantity
-      await cartItemRef.update({
-        'quantity': currentQuantity + 1,
-        'productDocId': productDocId,
-      });
-    } else {
-      // Add new product
-      await cartItemRef.set({
-        'productId': product['productId']?.toString() ?? productDocId,
-        'productDocId': productDocId,
-        'name': product['name']?.toString() ?? '',
-        'brand': product['brand']?.toString() ?? '',
-        'image': product['imageUrl']?.toString() ?? '',
-        'price': getPrice(product['price']),
-        'quantity': 1,
-        'addedAt': FieldValue.serverTimestamp(),
-      });
+      return;
     }
 
-    if (!mounted) return;
+    try {
+      final product = widget.product;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${product['name']} added to cart'),
-      ),
-    );
-  } catch (e) {
-    debugPrint('ADD TO CART ERROR: $e');
+      final String productDocId = product['id']?.toString() ?? '';
 
-    if (!mounted) return;
+      if (productDocId.isEmpty) {
+        if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Failed to add product to cart: $e'),
-      ),
-    );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Product ID is missing')));
+
+        return;
+      }
+
+      final cartItemRef = FirebaseFirestore.instance
+          .collection('carts')
+          .doc(user.uid)
+          .collection('items')
+          .doc(productDocId);
+
+      final cartItem = await cartItemRef.get();
+
+      if (cartItem.exists) {
+        final data = cartItem.data();
+
+        final dynamic quantityValue = data?['quantity'];
+
+        int currentQuantity = 1;
+
+        if (quantityValue is num) {
+          currentQuantity = quantityValue.toInt();
+        } else if (quantityValue is String) {
+          currentQuantity = int.tryParse(quantityValue) ?? 1;
+        }
+
+        await cartItemRef.update({
+          'quantity': currentQuantity + 1,
+          'productDocId': productDocId,
+          'price': getPrice(product['price']),
+        });
+      } else {
+        await cartItemRef.set({
+          'productId': product['productId']?.toString() ?? productDocId,
+          'productDocId': productDocId,
+          'name': product['name']?.toString() ?? '',
+          'brand': product['brand']?.toString() ?? '',
+          'category': product['category']?.toString() ?? '',
+          'image': product['imageUrl']?.toString() ?? '',
+          'imageUrl': product['imageUrl']?.toString() ?? '',
+          'price': getPrice(product['price']),
+          'quantity': 1,
+          'addedAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${product['name'] ?? 'Product'} added to cart'),
+        ),
+      );
+    } catch (e) {
+      debugPrint('ADD TO CART ERROR: $e');
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to add product to cart: $e')),
+      );
+    }
   }
-}
+
+  // ============================================================
+  // TOGGLE WISHLIST
+  // ============================================================
 
   Future<void> toggleWishlist() async {
     final user = _auth.currentUser;
@@ -196,13 +204,16 @@ class _OrganicGrainState extends State<OrganicGrain> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Please login first')));
+
       return;
     }
 
     try {
       final product = widget.product;
 
-      final String id = product['id'].toString();
+      final String id = product['id']?.toString() ?? '';
+
+      if (id.isEmpty) return;
 
       final wishlistRef = _firestore
           .collection('wishlist')
@@ -213,27 +224,26 @@ class _OrganicGrainState extends State<OrganicGrain> {
       final wishlistDoc = await wishlistRef.get();
 
       if (wishlistDoc.exists) {
-        // ============================
-        // REMOVE FROM WISHLIST
-        // ============================
-
         await wishlistRef.delete();
 
         if (!mounted) return;
 
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${product['name']} removed from wishlist')),
+          SnackBar(
+            content: Text(
+              '${product['name'] ?? 'Product'} removed from wishlist',
+            ),
+          ),
         );
       } else {
-        // ============================
-        // ADD TO WISHLIST
-        // ============================
-
         await wishlistRef.set({
           'productId': id,
+          'productDocId': id,
           'name': product['name']?.toString() ?? '',
           'brand': product['brand']?.toString() ?? '',
+          'category': product['category']?.toString() ?? '',
           'image': product['imageUrl']?.toString() ?? '',
+          'imageUrl': product['imageUrl']?.toString() ?? '',
           'price': getPrice(product['price']),
           'rating': getRating(product['rating']),
           'addedAt': FieldValue.serverTimestamp(),
@@ -242,7 +252,9 @@ class _OrganicGrainState extends State<OrganicGrain> {
         if (!mounted) return;
 
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${product['name']} added to wishlist')),
+          SnackBar(
+            content: Text('${product['name'] ?? 'Product'} added to wishlist'),
+          ),
         );
       }
     } catch (e) {
@@ -262,131 +274,195 @@ class _OrganicGrainState extends State<OrganicGrain> {
 
   @override
   Widget build(BuildContext context) {
-    final product = widget.product;
-
-    final String name = product['name']?.toString() ?? '';
-
-    final String brand = product['brand']?.toString() ?? '';
-
-    final String image = product['imageUrl']?.toString() ?? '';
-
-    final double price = getPrice(product['price']);
-
     return OrientationBuilder(
-      builder: (BuildContext context, Orientation orientation) {
-        return LayoutBuilder(
-          builder: (BuildContext context, BoxConstraints constraints) {
-            final double screenWidth = constraints.maxWidth;
+      builder: (context, orientation) {
+        final bool isLandscape = orientation == Orientation.landscape;
 
-            final bool isLandscape = orientation == Orientation.landscape;
+        return Scaffold(
+          backgroundColor: Colors.white,
 
-            final bool isTablet = screenWidth >= 600;
+          appBar: AppBar(
+            backgroundColor: Colors.white,
+            elevation: 0,
 
-            // ==================================================
-            // RESPONSIVE PADDING
-            // ==================================================
-
-            final double horizontalPadding =
-                screenWidth < 400
-                    ? 20
-                    : isLandscape
-                    ? 25
-                    : 30;
-
-            // ==================================================
-            // RESPONSIVE FONT SIZES
-            // ==================================================
-
-            final double titleSize = isLandscape ? 20 : 24;
-
-            final double sectionTitleSize = isLandscape ? 18 : 20;
-
-            // ==================================================
-            // APP BAR
-            // ==================================================
-
-            return Scaffold(
-              appBar: AppBar(
-                automaticallyImplyLeading: false,
-
-                leading: IconButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
-                  icon: Icon(
-                    Icons.arrow_back,
-                    color: const Color(0xff57423D),
-                    size: isLandscape ? 22 : 25,
-                  ),
-                ),
-
-                title: Text(
-                  'PetLife',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: isLandscape ? 20.sp : 24.sp,
-                    color: const Color(0xffA73927),
-                  ),
-                ),
-
-                centerTitle: true,
-
-                actions: [
-                  Padding(
-                    padding: EdgeInsets.only(right: isLandscape ? 20 : 25),
-                    child: Icon(
-                      Icons.notifications_none,
-                      color: const Color(0xffA73927),
-                      size: isLandscape ? 23 : 26,
-                    ),
-                  ),
-                ],
+            leading: IconButton(
+              icon: Icon(
+                Icons.arrow_back,
+                color: const Color(0xff650700),
+                size: isLandscape ? 22 : 25,
               ),
+              onPressed: () => Navigator.pop(context),
+            ),
 
-              // =================================================
-              // BODY
-              // =================================================
-              body: SafeArea(
-                child: SingleChildScrollView(
+            title: Text(
+              'Product Details',
+              style: TextStyle(
+                color: const Color(0xff650700),
+                fontSize: isLandscape ? 17.sp : 20.sp,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+
+          body: SafeArea(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final double screenWidth = constraints.maxWidth;
+
+                // Landscape phone/tablet gets two columns.
+                // If the screen is too narrow, use one column.
+                final bool useTwoColumn = isLandscape && screenWidth >= 600;
+
+                return SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
 
                   child: Padding(
                     padding: EdgeInsets.symmetric(
-                      horizontal: horizontalPadding,
+                      horizontal: isLandscape ? 20.w : 16.w,
+                      vertical: 10.h,
                     ),
 
-                    child:
-                        isLandscape && isTablet
-                            ? _buildLandscapeLayout(
-                              context,
-                              product,
-                              name,
-                              brand,
-                              image,
-                              price,
-                              screenWidth,
-                            )
-                            : _buildPortraitLayout(
-                              context,
-                              product,
-                              name,
-                              brand,
-                              image,
-                              price,
-                              screenWidth,
-                            ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+
+                      children: [
+                        // ==================================================
+                        // PRODUCT IMAGE + INFORMATION
+                        // ==================================================
+                        if (useTwoColumn)
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+
+                            children: [
+                              Expanded(
+                                flex: 5,
+                                child: _buildProductImage(
+                                  widget.product['imageUrl']?.toString() ?? '',
+                                  screenWidth * 0.45,
+                                  true,
+                                ),
+                              ),
+
+                              SizedBox(width: 20.w),
+
+                              Expanded(
+                                flex: 5,
+                                child: _buildProductInformation(
+                                  context,
+                                  widget.product,
+                                  widget.product['name']?.toString() ?? '',
+                                  widget.product['brand']?.toString() ?? '',
+                                  getPrice(widget.product['price']),
+                                  true,
+                                ),
+                              ),
+                            ],
+                          )
+                        else
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+
+                            children: [
+                              _buildProductImage(
+                                widget.product['imageUrl']?.toString() ?? '',
+                                screenWidth,
+                                isLandscape,
+                              ),
+
+                              SizedBox(height: 15.h),
+
+                              _buildProductInformation(
+                                context,
+                                widget.product,
+                                widget.product['name']?.toString() ?? '',
+                                widget.product['brand']?.toString() ?? '',
+                                getPrice(widget.product['price']),
+                                isLandscape,
+                              ),
+                            ],
+                          ),
+
+                        SizedBox(height: 20.h),
+
+                        // ==================================================
+                        // PRODUCT DETAILS
+                        // ==================================================
+                        _buildProductDetails(context, isLandscape),
+
+                        SizedBox(height: 20.h),
+
+                        // ==================================================
+                        // REVIEWS
+                        // ==================================================
+                        _buildReviews(context, isLandscape),
+
+                        SizedBox(height: 20.h),
+
+                        // ==================================================
+                        // BOTTOM BUTTONS
+                        // ==================================================
+                        _buildBottomButtons(context, isLandscape),
+
+                        SizedBox(height: 20.h),
+                      ],
+                    ),
                   ),
-                ),
-              ),
-            );
-          },
+                );
+              },
+            ),
+          ),
         );
       },
     );
   }
 
   // ============================================================
-  // PORTRAIT LAYOUT
+  // APP BAR
+  // ============================================================
+
+  PreferredSizeWidget _buildAppBar(bool isLandscape) {
+    return AppBar(
+      automaticallyImplyLeading: false,
+
+      leading: IconButton(
+        onPressed: () {
+          Navigator.pop(context);
+        },
+
+        icon: Icon(
+          Icons.arrow_back,
+          color: const Color(0xff57423D),
+          size: isLandscape ? 22 : 25,
+        ),
+      ),
+
+      title: Text(
+        'PetLife',
+        style: TextStyle(
+          fontWeight: FontWeight.w700,
+          fontSize: isLandscape ? 20.sp : 24.sp,
+          color: const Color(0xffA73927),
+        ),
+      ),
+
+      centerTitle: true,
+
+      actions: [
+        Padding(
+          padding: EdgeInsets.only(right: isLandscape ? 20 : 25),
+
+          child: Icon(
+            Icons.notifications_none,
+            color: const Color(0xffA73927),
+            size: isLandscape ? 23 : 26,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ============================================================
+  // PORTRAIT
   // ============================================================
 
   Widget _buildPortraitLayout(
@@ -428,7 +504,7 @@ class _OrganicGrainState extends State<OrganicGrain> {
   }
 
   // ============================================================
-  // LANDSCAPE LAYOUT
+  // LANDSCAPE
   // ============================================================
 
   Widget _buildLandscapeLayout(
@@ -441,6 +517,8 @@ class _OrganicGrainState extends State<OrganicGrain> {
     double screenWidth,
   ) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+
       children: [
         SizedBox(height: 15.h),
 
@@ -448,9 +526,6 @@ class _OrganicGrainState extends State<OrganicGrain> {
           crossAxisAlignment: CrossAxisAlignment.start,
 
           children: [
-            // ================================================
-            // LEFT SIDE - IMAGE
-            // ================================================
             Expanded(
               flex: 5,
               child: _buildProductImage(image, screenWidth * 0.45, true),
@@ -458,9 +533,6 @@ class _OrganicGrainState extends State<OrganicGrain> {
 
             SizedBox(width: 25.w),
 
-            // ================================================
-            // RIGHT SIDE - INFORMATION
-            // ================================================
             Expanded(
               flex: 5,
               child: _buildProductInformation(
@@ -496,114 +568,69 @@ class _OrganicGrainState extends State<OrganicGrain> {
   // PRODUCT IMAGE
   // ============================================================
 
+  // ============================================================
+  // PRODUCT IMAGE
+  // ============================================================
+
   Widget _buildProductImage(String image, double width, bool isLandscape) {
-    return AspectRatio(
-      aspectRatio: isLandscape ? 1.25 : 1.05,
+    return SizedBox(
+      width: double.infinity,
+      child: AspectRatio(
+        aspectRatio: isLandscape ? 1.20 : 1.05,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(15.r),
+                child:
+                    image.isNotEmpty
+                        ? Image.network(
+                          image,
+                          width: double.infinity,
+                          height: double.infinity,
+                          fit: BoxFit.cover,
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) {
+                              return child;
+                            }
 
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(15.r),
-
-              child:
-                  image.isNotEmpty
-                      ? Image.network(
-                        image,
-                        fit: BoxFit.cover,
-
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) {
-                            return child;
-                          }
-
-                          return Container(
-                            color: Colors.grey.shade200,
-                            child: const Center(
-                              child: CircularProgressIndicator(),
-                            ),
-                          );
-                        },
-
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            color: Colors.grey.shade200,
-                            child: Icon(
-                              Icons.image_not_supported,
-                              color: Colors.grey,
-                              size: 35.sp,
-                            ),
-                          );
-                        },
-                      )
-                      : Container(
-                        color: Colors.grey.shade200,
-                        child: Icon(
-                          Icons.image_not_supported,
-                          color: Colors.grey,
-                          size: 35.sp,
-                        ),
-                      ),
-            ),
-          ),
-
-          // ==================================================
-          // WISHLIST
-          // ==================================================
-          Positioned(
-            top: 15,
-            right: 15,
-            child: StreamBuilder<DocumentSnapshot>(
-              stream:
-                  _firestore
-                      .collection('wishlist')
-                      .doc(_auth.currentUser?.uid)
-                      .collection('items')
-                      .doc(productId)
-                      .snapshots(),
-
-              builder: (context, snapshot) {
-                final bool isFavorite = snapshot.data?.exists ?? false;
-
-                return GestureDetector(
-                  onTap: () async {
-                    await toggleWishlist();
-                  },
-
-                  child: CircleAvatar(
-                    radius: isLandscape ? 18 : 20,
-                    backgroundColor: Colors.white,
-
-                    child: Icon(
-                      isFavorite ? Icons.favorite : Icons.favorite_border,
-
-                      color: isFavorite ? const Color(0xffA73927) : Colors.grey,
-
-                      size: isLandscape ? 19 : 22,
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-
-          // ==================================================
-          // SHARE
-          // ==================================================
-          Positioned(
-            top: isLandscape ? 60 : 75,
-            right: 15,
-            child: CircleAvatar(
-              radius: isLandscape ? 18 : 20,
-              backgroundColor: Colors.white,
-              child: Icon(
-                Icons.share,
-                color: const Color(0xff57423D),
-                size: isLandscape ? 19 : 22,
+                            return Container(
+                              color: Colors.grey.shade200,
+                              child: const Center(
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                            );
+                          },
+                          errorBuilder: (context, error, stackTrace) {
+                            return _imageError(isLandscape);
+                          },
+                        )
+                        : _imageError(isLandscape),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // IMAGE ERROR
+  // ============================================================
+
+  Widget _imageError(bool isLandscape) {
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      color: Colors.grey.shade200,
+      child: Center(
+        child: Icon(
+          Icons.image_not_supported,
+          color: Colors.grey,
+          size: isLandscape ? 32 : 40,
+        ),
       ),
     );
   }
@@ -631,17 +658,17 @@ class _OrganicGrainState extends State<OrganicGrain> {
           crossAxisAlignment: CrossAxisAlignment.start,
 
           children: [
-            Expanded(
-              child: Container(
-                constraints: const BoxConstraints(minHeight: 25),
+            Flexible(
+              flex: 5,
 
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 4,
-                ),
+              child: Container(
+                constraints: const BoxConstraints(minHeight: 28),
+
+                padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 5.h),
 
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16.r),
+
                   color: const Color(0xff93EEF9),
                 ),
 
@@ -656,44 +683,57 @@ class _OrganicGrainState extends State<OrganicGrain> {
 
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
+
                     fontSize: isLandscape ? 10.sp : 12.sp,
+
                     color: const Color(0xff57423D),
                   ),
                 ),
               ),
             ),
 
-            SizedBox(width: 15.w),
+            SizedBox(width: 10.w),
 
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
+            Flexible(
+              flex: 4,
 
-              children: [
-                FittedBox(
-                  fit: BoxFit.scaleDown,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
 
-                  child: Text(
-                    '\$${price.toStringAsFixed(2)}',
+                children: [
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
 
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: isLandscape ? 20.sp : 24.sp,
-                      color: const Color(0xffA73927),
+                    child: Text(
+                      '\$${price.toStringAsFixed(2)}',
+
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+
+                        fontSize: isLandscape ? 20.sp : 24.sp,
+
+                        color: const Color(0xffA73927),
+                      ),
                     ),
                   ),
-                ),
 
-                SizedBox(height: 2.h),
+                  SizedBox(height: 2.h),
 
-                Text(
-                  '\$42.00',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w400,
-                    fontSize: isLandscape ? 10.sp : 12.sp,
-                    color: const Color(0xff57423D),
+                  Text(
+                    '\$42.00',
+
+                    maxLines: 1,
+
+                    style: TextStyle(
+                      fontWeight: FontWeight.w400,
+
+                      fontSize: isLandscape ? 10.sp : 12.sp,
+
+                      color: const Color(0xff57423D),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),
@@ -705,13 +745,18 @@ class _OrganicGrainState extends State<OrganicGrain> {
         // ==================================================
         Text(
           name,
-          maxLines: 3,
+
+          maxLines: isLandscape ? 3 : 4,
+
           overflow: TextOverflow.ellipsis,
 
           style: TextStyle(
             fontWeight: FontWeight.w600,
+
             fontSize: isLandscape ? 20.sp : 24.sp,
+
             color: const Color(0xff1B1C1C),
+
             height: 1.2,
           ),
         ),
@@ -724,25 +769,33 @@ class _OrganicGrainState extends State<OrganicGrain> {
         Row(
           children: [
             Row(
+              mainAxisSize: MainAxisSize.min,
+
               children: List.generate(5, (index) {
                 return Icon(
                   Icons.star,
                   color: Colors.amber,
+
                   size: isLandscape ? 16.sp : 18.sp,
                 );
               }),
             ),
 
-            SizedBox(width: 8.w),
+            SizedBox(width: 7.w),
 
             Flexible(
               child: Text(
                 '(4.8 • 124 reviews)',
+
                 maxLines: 1,
+
                 overflow: TextOverflow.ellipsis,
+
                 style: TextStyle(
                   fontWeight: FontWeight.w400,
-                  fontSize: isLandscape ? 11.sp : 14.sp,
+
+                  fontSize: isLandscape ? 10.sp : 13.sp,
+
                   color: const Color(0xff57423D),
                 ),
               ),
@@ -750,37 +803,40 @@ class _OrganicGrainState extends State<OrganicGrain> {
           ],
         ),
 
-        SizedBox(height: 20.h),
+        SizedBox(height: 18.h),
 
         // ==================================================
         // SELECT WEIGHT
         // ==================================================
         Text(
           'SELECT WEIGHT',
+
           style: TextStyle(
             fontWeight: FontWeight.w600,
+
             fontSize: isLandscape ? 11.sp : 12.sp,
+
             color: const Color(0xff57423D),
           ),
         ),
 
-        SizedBox(height: 12.h),
+        SizedBox(height: 10.h),
 
         Row(
           children: [
             Expanded(child: weightButton('2kg', isLandscape)),
 
-            SizedBox(width: 8.w),
+            SizedBox(width: 7.w),
 
             Expanded(child: weightButton('5kg', isLandscape)),
 
-            SizedBox(width: 8.w),
+            SizedBox(width: 7.w),
 
             Expanded(child: weightButton('10kg', isLandscape)),
           ],
         ),
 
-        SizedBox(height: 20.h),
+        SizedBox(height: 18.h),
 
         // ==================================================
         // FEATURES
@@ -795,7 +851,7 @@ class _OrganicGrainState extends State<OrganicGrain> {
               ),
             ),
 
-            SizedBox(width: 10.w),
+            SizedBox(width: 8.w),
 
             Expanded(
               child: _featureCard(
@@ -825,10 +881,10 @@ class _OrganicGrainState extends State<OrganicGrain> {
       },
 
       child: Container(
-        height: isLandscape ? 45 : 52,
+        height: isLandscape ? 44 : 50,
 
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16.r),
+          borderRadius: BorderRadius.circular(14.r),
 
           border: Border.all(
             color: selected ? const Color(0xffA73927) : const Color(0xffDFC0BA),
@@ -841,9 +897,12 @@ class _OrganicGrainState extends State<OrganicGrain> {
         child: Center(
           child: Text(
             weight,
+
             style: TextStyle(
               fontWeight: FontWeight.w400,
-              fontSize: isLandscape ? 13.sp : 16.sp,
+
+              fontSize: isLandscape ? 12.sp : 15.sp,
+
               color:
                   selected ? const Color(0xffA73927) : const Color(0xff57423D),
             ),
@@ -857,46 +916,57 @@ class _OrganicGrainState extends State<OrganicGrain> {
   // FEATURE CARD
   // ============================================================
 
+  // ============================================================
+  // FEATURE CARD
+  // ============================================================
+
+  // ============================================================
+  // FEATURE CARD
+  // ============================================================
+
   Widget _featureCard({
     required IconData icon,
     required String title,
     required bool isLandscape,
   }) {
     return Container(
-      height: isLandscape ? 75 : 90,
+      width: double.infinity,
+
+      padding: EdgeInsets.symmetric(
+        horizontal: 6.w,
+        vertical: isLandscape ? 10.h : 12.h,
+      ),
 
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16.r),
-
         color: const Color(0xffEAE7E7),
-
         border: Border.all(color: const Color(0x083C2800)),
       ),
 
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
 
         children: [
           Icon(
             icon,
             color: const Color(0xff006971),
-            size: isLandscape ? 22.sp : 26.sp,
+            size: isLandscape ? 20.sp : 26.sp,
           ),
 
-          SizedBox(height: 4.h),
+          SizedBox(height: 5.h),
 
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 5),
+          Text(
+            title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
 
-            child: Text(
-              title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: isLandscape ? 10.sp : 12.sp,
-                color: const Color(0xff1B1C1C),
-              ),
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: isLandscape ? 9.sp : 12.sp,
+              color: const Color(0xff1B1C1C),
+              height: 1.15,
             ),
           ),
         ],
@@ -915,9 +985,12 @@ class _OrganicGrainState extends State<OrganicGrain> {
       children: [
         Text(
           'Product Details',
+
           style: TextStyle(
             fontWeight: FontWeight.w600,
+
             fontSize: isLandscape ? 18.sp : 20.sp,
+
             color: const Color(0xff1B1C1C),
           ),
         ),
@@ -932,13 +1005,16 @@ class _OrganicGrainState extends State<OrganicGrain> {
 
           style: TextStyle(
             fontWeight: FontWeight.w400,
+
             fontSize: isLandscape ? 12.sp : 14.sp,
+
             color: const Color(0xff57423D),
+
             height: 1.5,
           ),
         ),
 
-        SizedBox(height: 20.h),
+        SizedBox(height: 18.h),
 
         _expandableDetail(title: 'Ingredients', isLandscape: isLandscape),
 
@@ -955,9 +1031,11 @@ class _OrganicGrainState extends State<OrganicGrain> {
 
   Widget _expandableDetail({required String title, required bool isLandscape}) {
     return Container(
-      constraints: const BoxConstraints(minHeight: 65),
+      width: double.infinity,
 
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+      constraints: const BoxConstraints(minHeight: 60),
+
+      padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 14.h),
 
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(18.r),
@@ -972,9 +1050,12 @@ class _OrganicGrainState extends State<OrganicGrain> {
           Expanded(
             child: Text(
               title,
+
               style: TextStyle(
                 fontWeight: FontWeight.w600,
-                fontSize: isLandscape ? 17.sp : 20.sp,
+
+                fontSize: isLandscape ? 16.sp : 19.sp,
+
                 color: const Color(0xff1B1C1C),
               ),
             ),
@@ -982,8 +1063,10 @@ class _OrganicGrainState extends State<OrganicGrain> {
 
           Icon(
             Icons.keyboard_arrow_down_sharp,
+
             color: const Color(0xff1B1C1C),
-            size: isLandscape ? 25.sp : 28.sp,
+
+            size: isLandscape ? 24.sp : 28.sp,
           ),
         ],
       ),
@@ -1010,12 +1093,16 @@ class _OrganicGrainState extends State<OrganicGrain> {
                 children: [
                   Text(
                     'Customer Reviews',
+
                     maxLines: 1,
+
                     overflow: TextOverflow.ellipsis,
 
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
+
                       fontSize: isLandscape ? 18.sp : 20.sp,
+
                       color: const Color(0xff1B1C1C),
                     ),
                   ),
@@ -1024,12 +1111,16 @@ class _OrganicGrainState extends State<OrganicGrain> {
 
                   Text(
                     'Based on 124 verified purchases',
+
                     maxLines: 1,
+
                     overflow: TextOverflow.ellipsis,
 
                     style: TextStyle(
                       fontWeight: FontWeight.w400,
+
                       fontSize: isLandscape ? 10.sp : 12.sp,
+
                       color: const Color(0xff57423D),
                     ),
                   ),
@@ -1042,9 +1133,12 @@ class _OrganicGrainState extends State<OrganicGrain> {
 
               child: Text(
                 'View All',
+
                 style: TextStyle(
                   fontWeight: FontWeight.w400,
+
                   fontSize: isLandscape ? 13.sp : 16.sp,
+
                   color: const Color(0xffA73927),
                 ),
               ),
@@ -1052,7 +1146,7 @@ class _OrganicGrainState extends State<OrganicGrain> {
           ],
         ),
 
-        SizedBox(height: 20.h),
+        SizedBox(height: 15.h),
 
         // ==================================================
         // FIRESTORE REVIEWS
@@ -1069,11 +1163,12 @@ class _OrganicGrainState extends State<OrganicGrain> {
               debugPrint('FIRESTORE ERROR: ${snapshot.error}');
 
               return Padding(
-                padding: EdgeInsets.all(20.w),
+                padding: EdgeInsets.all(15.w),
 
                 child: Text(
                   'Error loading reviews:\n\n'
                   '${snapshot.error}',
+
                   style: TextStyle(color: Colors.red, fontSize: 14.sp),
                 ),
               );
@@ -1152,10 +1247,9 @@ class _OrganicGrainState extends State<OrganicGrain> {
 
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+
             children: [
-              // ============================================
-              // PROFILE
-              // ============================================
               CircleAvatar(
                 radius: isLandscape ? 21.r : 25.r,
 
@@ -1163,9 +1257,12 @@ class _OrganicGrainState extends State<OrganicGrain> {
 
                 child: Text(
                   initials,
+
                   style: TextStyle(
                     fontWeight: FontWeight.w700,
+
                     fontSize: isLandscape ? 14.sp : 16.sp,
+
                     color: const Color(0xff3F0300),
                   ),
                 ),
@@ -1173,9 +1270,6 @@ class _OrganicGrainState extends State<OrganicGrain> {
 
               SizedBox(width: 10.w),
 
-              // ============================================
-              // NAME + RATING
-              // ============================================
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1183,12 +1277,16 @@ class _OrganicGrainState extends State<OrganicGrain> {
                   children: [
                     Text(
                       name,
+
                       maxLines: 1,
+
                       overflow: TextOverflow.ellipsis,
 
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
+
                         fontSize: isLandscape ? 11.sp : 12.sp,
+
                         color: const Color(0xff1B1C1C),
                       ),
                     ),
@@ -1214,20 +1312,21 @@ class _OrganicGrainState extends State<OrganicGrain> {
 
               SizedBox(width: 5.w),
 
-              // ============================================
-              // TIME
-              // ============================================
               Flexible(
                 child: Text(
                   time,
+
                   maxLines: 1,
+
                   overflow: TextOverflow.ellipsis,
 
                   textAlign: TextAlign.end,
 
                   style: TextStyle(
                     fontWeight: FontWeight.w400,
+
                     fontSize: isLandscape ? 9.sp : 11.sp,
+
                     color: const Color(0xff57423D),
                   ),
                 ),
@@ -1239,10 +1338,14 @@ class _OrganicGrainState extends State<OrganicGrain> {
 
           Text(
             review,
+
             style: TextStyle(
               fontWeight: FontWeight.w400,
+
               fontSize: isLandscape ? 12.sp : 14.sp,
+
               color: const Color(0xff57423D),
+
               height: 1.4,
             ),
           ),
@@ -1255,67 +1358,80 @@ class _OrganicGrainState extends State<OrganicGrain> {
   // BOTTOM BUTTONS
   // ============================================================
 
-  Widget _buildBottomButtons(BuildContext context, bool isLandscape) {
-    return Row(
-      children: [
-        // ==================================================
-        // SUBSCRIBE
-        // ==================================================
-        Expanded(
-          child: SizedBox(
-            height: isLandscape ? 65 : 85,
+  // ============================================================
+  // BOTTOM BUTTONS
+  // ============================================================
 
+  // ============================================================
+  // BOTTOM BUTTONS
+  // ============================================================
+
+  Widget _buildBottomButtons(BuildContext context, bool isLandscape) {
+    // Same height for both buttons.
+    // Use a fixed logical height so rotation does not change it.
+    const double buttonHeight = 64.0;
+
+    return SizedBox(
+      height: buttonHeight,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // ==================================================
+          // SUBSCRIBE
+          // ==================================================
+          Expanded(
             child: OutlinedButton(
               style: OutlinedButton.styleFrom(
+                minimumSize: Size.zero,
+                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 side: const BorderSide(color: Color(0xff006971)),
-
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(18.r),
                 ),
               ),
-
               onPressed: () {},
-
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
                     Icons.autorenew,
                     color: const Color(0xff006971),
-                    size: isLandscape ? 21.sp : 26.sp,
+                    size: isLandscape ? 19.sp : 22.sp,
                   ),
 
                   SizedBox(width: 6.w),
 
                   Flexible(
                     child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       mainAxisAlignment: MainAxisAlignment.center,
-
                       crossAxisAlignment: CrossAxisAlignment.start,
-
                       children: [
                         Text(
                           'Subscribe',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-
                           style: TextStyle(
-                            fontWeight: FontWeight.w400,
-                            fontSize: isLandscape ? 12.sp : 16.sp,
+                            fontWeight: FontWeight.w500,
+                            fontSize: isLandscape ? 10.sp : 13.sp,
                             color: const Color(0xff006971),
+                            height: 1.0,
                           ),
                         ),
+
+                        const SizedBox(height: 2),
 
                         Text(
                           '& Save 15%',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-
                           style: TextStyle(
-                            fontWeight: FontWeight.w400,
-                            fontSize: isLandscape ? 12.sp : 16.sp,
+                            fontWeight: FontWeight.w500,
+                            fontSize: isLandscape ? 10.sp : 13.sp,
                             color: const Color(0xff006971),
+                            height: 1.0,
                           ),
                         ),
                       ],
@@ -1325,53 +1441,44 @@ class _OrganicGrainState extends State<OrganicGrain> {
               ),
             ),
           ),
-        ),
 
-        SizedBox(width: 10.w),
+          SizedBox(width: 10.w),
 
-        // ==================================================
-        // ADD TO CART
-        // ==================================================
-        Expanded(
-          child: SizedBox(
-            height: isLandscape ? 65 : 85,
-
+          // ==================================================
+          // ADD TO CART
+          // ==================================================
+          Expanded(
             child: ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
+                minimumSize: Size.zero,
+                padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 backgroundColor: const Color(0xffA73927),
-
+                foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(18.r),
                 ),
               ),
-
-              onPressed: () async {
-                await addToCart();
-
-                if (!mounted) return;
-              },
-
+              onPressed: addToCart,
               icon: Icon(
                 Icons.shopping_cart_outlined,
                 color: Colors.white,
-                size: isLandscape ? 19.sp : 22.sp,
+                size: isLandscape ? 18.sp : 21.sp,
               ),
-
               label: Text(
                 'Add to Cart',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-
                 style: TextStyle(
-                  fontWeight: FontWeight.w400,
-                  fontSize: isLandscape ? 12.sp : 16.sp,
+                  fontWeight: FontWeight.w500,
+                  fontSize: isLandscape ? 11.sp : 15.sp,
                   color: Colors.white,
                 ),
               ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

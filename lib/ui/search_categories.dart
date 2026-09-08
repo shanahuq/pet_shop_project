@@ -498,6 +498,10 @@ class _SearchCategoriesState extends State<SearchCategories> {
   // RESPONSIVE TITLE SIZE
   // ============================================================
 
+  // ============================================================
+  // RESPONSIVE TITLE SIZE
+  // ============================================================
+
   double getTitleSize(double width) {
     if (width < 600) {
       return 28.sp;
@@ -509,6 +513,34 @@ class _SearchCategoriesState extends State<SearchCategories> {
 
     return 28.sp;
   }
+
+  // ============================================================
+  // RESPONSIVE TAB TEXT SIZE
+  // ============================================================
+
+  // double getTabTextSize(double width, bool isLandscape) {
+  //   if (isLandscape) {
+  //     if (width < 700) {
+  //       return 10.sp;
+  //     }
+
+  //     if (width < 1000) {
+  //       return 11.sp;
+  //     }
+
+  //     return 12.sp;
+  //   }
+
+  //   if (width < 400) {
+  //     return 11.sp;
+  //   }
+
+  //   if (width < 600) {
+  //     return 12.sp;
+  //   }
+
+  //   return 13.sp;
+  // }
 
   // ============================================================
   // BUILD
@@ -593,15 +625,25 @@ class _SearchCategoriesState extends State<SearchCategories> {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Expanded(
-                        child: Text(
-                          '24 premium items for your best friend',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w400,
-                            fontSize: 14.sp,
-                            color: const Color(0xff57423D),
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
+                        child: StreamBuilder<
+                          QuerySnapshot<Map<String, dynamic>>
+                        >(
+                          stream: productsStream,
+                          builder: (context, snapshot) {
+                            final int productCount =
+                                snapshot.data?.docs.length ?? 0;
+
+                            return Text(
+                              '$productCount premium ${productCount == 1 ? 'item' : 'items'} for your best friend',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w400,
+                                fontSize: 14.sp,
+                                color: const Color(0xff57423D),
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            );
+                          },
                         ),
                       ),
 
@@ -649,63 +691,83 @@ class _SearchCategoriesState extends State<SearchCategories> {
                   // ==================================================
                   // CATEGORY TABS
                   // ==================================================
+                  // ==================================================
+                  // CATEGORY TABS
+                  // ==================================================
+                  // ==================================================
+                  // CATEGORY TABS
+                  // ==================================================
                   SizedBox(
-                    height: 45.h,
+                    height: isLandscape ? 42 : 48,
 
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-
-                      separatorBuilder: (_, __) => SizedBox(width: 10.w),
-
-                      itemCount: tabs.length,
-
-                      itemBuilder: (context, index) {
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: List.generate(tabs.length, (index) {
                         final bool isSelected = selectedTab == index;
 
-                        return GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              selectedTab = index;
-                            });
-                          },
-
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 250),
-
+                        return Expanded(
+                          child: Padding(
                             padding: EdgeInsets.symmetric(
-                              horizontal: screenWidth < 600 ? 18.w : 15.w,
-                              vertical: 10.h,
+                              horizontal: isLandscape ? 4.w : 3.w,
                             ),
 
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(20.r),
+                            child: GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  selectedTab = index;
+                                });
+                              },
 
-                              color:
-                                  isSelected
-                                      ? const Color(0xffF27059)
-                                      : Colors.white,
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 250),
 
-                              border: Border.all(
-                                color:
-                                    isSelected
-                                        ? Colors.white
-                                        : const Color(0xffDFC0BA),
-                              ),
-                            ),
+                                width: double.infinity,
 
-                            child: Center(
-                              child: Text(
-                                tabs[index],
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 12.sp,
-                                  color: const Color(0xff650700),
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: isLandscape ? 8 : 10,
+                                  vertical: isLandscape ? 8 : 10,
+                                ),
+
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(20.r),
+
+                                  color:
+                                      isSelected
+                                          ? const Color(0xffF27059)
+                                          : Colors.white,
+
+                                  border: Border.all(
+                                    color:
+                                        isSelected
+                                            ? Colors.white
+                                            : const Color(0xffDFC0BA),
+                                  ),
+                                ),
+
+                                child: Center(
+                                  child: Text(
+                                    tabs[index],
+
+                                    maxLines: 1,
+                                    softWrap: false,
+                                    overflow: TextOverflow.visible,
+
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+
+                                      fontSize: isLandscape ? 11 : 13,
+
+                                      height: 1.0,
+
+                                      color: const Color(0xff650700),
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
                           ),
                         );
-                      },
+                      }),
                     ),
                   ),
 

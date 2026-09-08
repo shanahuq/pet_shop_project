@@ -89,92 +89,86 @@ class _HomePageState extends State<HomePage> {
   // ADD TO CART
   // ============================================================
 
- Future<void> addToCart(Map<String, dynamic> product) async {
-  final user = FirebaseAuth.instance.currentUser;
+  Future<void> addToCart(Map<String, dynamic> product) async {
+    final user = FirebaseAuth.instance.currentUser;
 
-  if (user == null) {
-    if (!mounted) return;
+    if (user == null) {
+      if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Please login first')),
-    );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please login first')));
 
-    return;
-  }
-
-  try {
-    final productId = product['id'].toString();
-
-    final double price = getPrice(product['price']);
-
-    debugPrint('====================================');
-    debugPrint('PRODUCT NAME: ${product['name']}');
-    debugPrint('ORIGINAL PRICE: ${product['price']}');
-    debugPrint('ORIGINAL PRICE TYPE: ${product['price'].runtimeType}');
-    debugPrint('CONVERTED PRICE: $price');
-    debugPrint('CONVERTED PRICE TYPE: ${price.runtimeType}');
-    debugPrint('====================================');
-
-    final cartItemRef = FirebaseFirestore.instance
-        .collection('carts')
-        .doc(user.uid)
-        .collection('items')
-        .doc(productId);
-
-    final cartItem = await cartItemRef.get();
-
-    if (cartItem.exists) {
-      final data = cartItem.data();
-
-      final currentQuantity = getQuantity(data?['quantity']);
-
-      await cartItemRef.update({
-        'quantity': currentQuantity + 1,
-        'price': price,
-      });
-    } else {
-      await cartItemRef.set({
-        'productId': productId,
-        'name': product['name']?.toString() ?? '',
-        'brand': product['brand']?.toString() ?? '',
-        'image': product['imageUrl']?.toString() ?? '',
-        'price': price,
-        'quantity': 1,
-        'addedAt': FieldValue.serverTimestamp(),
-      });
+      return;
     }
 
-    // READ IT BACK FROM FIRESTORE
-    final check = await cartItemRef.get();
+    try {
+      final productId = product['id'].toString();
 
-    final savedData = check.data();
+      final double price = getPrice(product['price']);
 
-    debugPrint('====================================');
-    debugPrint('FIRESTORE PRICE: ${savedData?['price']}');
-    debugPrint(
-      'FIRESTORE PRICE TYPE: ${savedData?['price'].runtimeType}',
-    );
-    debugPrint('====================================');
+      debugPrint('====================================');
+      debugPrint('PRODUCT NAME: ${product['name']}');
+      debugPrint('ORIGINAL PRICE: ${product['price']}');
+      debugPrint('ORIGINAL PRICE TYPE: ${product['price'].runtimeType}');
+      debugPrint('CONVERTED PRICE: $price');
+      debugPrint('CONVERTED PRICE TYPE: ${price.runtimeType}');
+      debugPrint('====================================');
 
-    if (!mounted) return;
+      final cartItemRef = FirebaseFirestore.instance
+          .collection('carts')
+          .doc(user.uid)
+          .collection('items')
+          .doc(productId);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${product['name']} added to cart'),
-      ),
-    );
-  } catch (e) {
-    debugPrint('FIREBASE ERROR: $e');
+      final cartItem = await cartItemRef.get();
 
-    if (!mounted) return;
+      if (cartItem.exists) {
+        final data = cartItem.data();
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Failed to add product: $e'),
-      ),
-    );
+        final currentQuantity = getQuantity(data?['quantity']);
+
+        await cartItemRef.update({
+          'quantity': currentQuantity + 1,
+          'price': price,
+        });
+      } else {
+        await cartItemRef.set({
+          'productId': productId,
+          'name': product['name']?.toString() ?? '',
+          'brand': product['brand']?.toString() ?? '',
+          'image': product['imageUrl']?.toString() ?? '',
+          'price': price,
+          'quantity': 1,
+          'addedAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      // READ IT BACK FROM FIRESTORE
+      final check = await cartItemRef.get();
+
+      final savedData = check.data();
+
+      debugPrint('====================================');
+      debugPrint('FIRESTORE PRICE: ${savedData?['price']}');
+      debugPrint('FIRESTORE PRICE TYPE: ${savedData?['price'].runtimeType}');
+      debugPrint('====================================');
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${product['name']} added to cart')),
+      );
+    } catch (e) {
+      debugPrint('FIREBASE ERROR: $e');
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to add product: $e')));
+    }
   }
-}
 
   // ============================================================
   // TOGGLE WISHLIST
@@ -1139,40 +1133,47 @@ class _HomePageState extends State<HomePage> {
                     // ==================================================
                     // WISHLIST
                     // ==================================================
+                    // ==================================================
+                    // WISHLIST
+                    // ==================================================
                     Positioned(
                       top: 5,
                       right: 5,
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          // Responsive size based on available card/image width
+                          final double favoriteSize =
+                              (constraints.maxWidth * 0.20).clamp(32.0, 44.0);
 
-                      child: Material(
-                        color: Colors.white,
+                          final double favoriteIconSize = favoriteSize * 0.55;
 
-                        shape: const CircleBorder(),
-
-                        child: SizedBox(
-                          width: 32,
-                          height: 32,
-
-                          child: IconButton(
-                            padding: EdgeInsets.zero,
-
-                            onPressed: () async {
-                              await toggleWishlist(product);
-                            },
-
-                            icon: Icon(
-                              isWishlisted
-                                  ? Icons.favorite
-                                  : Icons.favorite_border,
-
-                              color:
+                          return Material(
+                            color: Colors.white,
+                            shape: const CircleBorder(),
+                            elevation: 1,
+                            child: SizedBox(
+                              width: favoriteSize,
+                              height: favoriteSize,
+                              child: IconButton(
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                onPressed: () async {
+                                  await toggleWishlist(product);
+                                },
+                                icon: Icon(
                                   isWishlisted
-                                      ? Colors.red
-                                      : const Color(0xffA73927),
-
-                              size: 19.sp,
+                                      ? Icons.favorite
+                                      : Icons.favorite_border,
+                                  color:
+                                      isWishlisted
+                                          ? Colors.red
+                                          : const Color(0xffA73927),
+                                  size: favoriteIconSize,
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
+                          );
+                        },
                       ),
                     ),
                   ],
