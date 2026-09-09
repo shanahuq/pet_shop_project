@@ -445,19 +445,25 @@ class _HomePageState extends State<HomePage> {
                         // =======================================
                         // SEARCH BAR
                         // =======================================
+                        // =======================================
+                        // SEARCH BAR
+                        // =======================================
+                        // =======================================
+                        // SEARCH BAR
+                        // =======================================
                         Container(
                           height: searchHeight,
-
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(12.r),
-
                             color: const Color.fromARGB(136, 158, 158, 158),
                           ),
-
                           child: TextField(
                             controller: searchController,
-
                             keyboardType: TextInputType.text,
+                            maxLines: 1,
+
+                            // LEFT SIDE TEXT
+                            textAlign: TextAlign.left,
 
                             onChanged: (value) {
                               setState(() {
@@ -465,26 +471,35 @@ class _HomePageState extends State<HomePage> {
                               });
                             },
 
+                            style: TextStyle(
+                              fontSize: isLandscape ? 12.sp : 14.sp,
+                              color: const Color(0xff1B1C1C),
+                            ),
+
                             decoration: InputDecoration(
                               hintText: 'Search for treats, toys, or food...',
 
                               hintStyle: TextStyle(
-                                fontSize: isLandscape ? 11.sp : 12.sp,
+                                fontSize: isLandscape ? 11.sp : 13.sp,
+                                color: Colors.grey.shade600,
                               ),
 
-                              prefixIcon: const Icon(
+                              // SEARCH ICON
+                              prefixIcon: Icon(
                                 Icons.search,
                                 color: Colors.grey,
+                                size: isLandscape ? 21.sp : 24.sp,
                               ),
 
+                              // CLEAR ICON
                               suffixIcon:
                                   searchQuery.isNotEmpty
                                       ? IconButton(
-                                        icon: const Icon(
+                                        icon: Icon(
                                           Icons.clear,
                                           color: Colors.grey,
+                                          size: isLandscape ? 20.sp : 23.sp,
                                         ),
-
                                         onPressed: () {
                                           searchController.clear();
 
@@ -497,8 +512,9 @@ class _HomePageState extends State<HomePage> {
 
                               border: InputBorder.none,
 
+                              // RESPONSIVE TEXT POSITION
                               contentPadding: EdgeInsets.symmetric(
-                                vertical: 10.h,
+                                vertical: isLandscape ? 12.h : 10.h,
                               ),
                             ),
                           ),
