@@ -947,7 +947,10 @@ class _HomePageState extends State<HomePage> {
                 : allProducts.where((product) {
                   final name = product['name'].toString().toLowerCase();
 
-                  return name.contains(searchQuery);
+                  final brand = product['brand'].toString().toLowerCase();
+
+                  return name.contains(searchQuery) ||
+                      brand.contains(searchQuery);
                 }).toList();
 
         return Column(

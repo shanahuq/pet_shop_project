@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:pet_shop_project/ui/search_categories.dart';
+import 'dart:async';
+
+import '../models/product_model.dart';
+import '../services/product_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
@@ -10,11 +15,136 @@ class SearchPage extends StatefulWidget {
 }
 
 class _SearchPageState extends State<SearchPage> {
-  List<String> recentsearches = [
-    'Grain-free kibble',
-    'Chew toys',
-    'Cat scratcher',
-  ];
+  final TextEditingController searchController = TextEditingController();
+
+  final ProductService productService = ProductService();
+
+  List<ProductModel> searchResults = [];
+
+  bool isSearching = false;
+
+  Timer? searchTimer;
+
+  @override
+  void initState() {
+    super.initState();
+
+    loadRecentSearches();
+  }
+
+  Future<void> searchProducts(String value, {bool saveHistory = false}) async {
+    final query = value.trim();
+
+    if (query.isEmpty) {
+      setState(() {
+        searchResults.clear();
+        isSearching = false;
+      });
+
+      return;
+    }
+
+    setState(() {
+      isSearching = true;
+    });
+
+    try {
+      final results = await productService.searchProducts(query);
+
+      if (!mounted) return;
+
+      setState(() {
+        searchResults = results;
+        isSearching = false;
+      });
+
+      if (saveHistory) {
+        await saveRecentSearch(query);
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        searchResults.clear();
+        isSearching = false;
+      });
+
+      debugPrint('Search error: $e');
+    }
+  }
+
+  Future<void> loadRecentSearches() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final searches = prefs.getStringList(recentSearchKey) ?? [];
+
+    if (!mounted) return;
+
+    setState(() {
+      recentsearches = searches;
+    });
+  }
+
+  Future<void> saveRecentSearch(String search) async {
+    final query = search.trim();
+
+    if (query.isEmpty) return;
+
+    final prefs = await SharedPreferences.getInstance();
+
+    List<String> searches = prefs.getStringList(recentSearchKey) ?? [];
+
+    // Remove duplicate
+    searches.removeWhere((item) => item.toLowerCase() == query.toLowerCase());
+
+    // Add newest search at the beginning
+    searches.insert(0, query);
+
+    // Keep only latest 10 searches
+    if (searches.length > 10) {
+      searches = searches.sublist(0, 10);
+    }
+
+    await prefs.setStringList(recentSearchKey, searches);
+
+    if (!mounted) return;
+
+    setState(() {
+      recentsearches = searches;
+    });
+  }
+
+  Future<void> clearRecentSearches() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    await prefs.remove(recentSearchKey);
+
+    if (!mounted) return;
+
+    setState(() {
+      recentsearches.clear();
+    });
+  }
+
+  Future<void> removeRecentSearch(String search) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    List<String> searches = prefs.getStringList(recentSearchKey) ?? [];
+
+    searches.removeWhere((item) => item.toLowerCase() == search.toLowerCase());
+
+    await prefs.setStringList(recentSearchKey, searches);
+
+    if (!mounted) return;
+
+    setState(() {
+      recentsearches = searches;
+    });
+  }
+
+  List<String> recentsearches = [];
+
+  static const String recentSearchKey = 'recent_searches';
 
   final List<Map<String, dynamic>> categories = [
     {
@@ -140,9 +270,32 @@ class _SearchPageState extends State<SearchPage> {
                           height: searchHeight,
 
                           child: TextField(
+                            controller: searchController,
+
                             keyboardType: TextInputType.text,
 
                             maxLines: 1,
+
+                            textInputAction: TextInputAction.search,
+
+                            // SEARCH WHILE TYPING
+                            onChanged: (value) {
+                              setState(() {});
+
+                              searchTimer?.cancel();
+
+                              searchTimer = Timer(
+                                const Duration(milliseconds: 500),
+                                () {
+                                  searchProducts(value, saveHistory: true);
+                                },
+                              );
+                            },
+
+                            // SAVE TO RECENT SEARCHES WHEN USER PRESSES SEARCH
+                            onSubmitted: (value) {
+                              searchProducts(value, saveHistory: true);
+                            },
 
                             style: TextStyle(
                               fontSize: isLandscape ? 13.sp : 14.sp,
@@ -160,12 +313,31 @@ class _SearchPageState extends State<SearchPage> {
                                 size: isLandscape ? 21.sp : 24.sp,
                               ),
 
-                              suffixIcon: Icon(
-                                Icons.mic_none,
-                                size: isLandscape ? 21.sp : 24.sp,
-                              ),
+                              suffixIcon:
+                                  searchController.text.isNotEmpty
+                                      ? IconButton(
+                                        icon: Icon(
+                                          Icons.close,
+                                          size: isLandscape ? 21.sp : 24.sp,
+                                        ),
+                                        onPressed: () {
+                                          searchTimer?.cancel();
+
+                                          searchController.clear();
+
+                                          setState(() {
+                                            searchResults.clear();
+                                            isSearching = false;
+                                          });
+                                        },
+                                      )
+                                      : Icon(
+                                        Icons.mic_none,
+                                        size: isLandscape ? 21.sp : 24.sp,
+                                      ),
 
                               filled: true,
+
                               fillColor: Colors.white,
 
                               contentPadding: EdgeInsets.symmetric(
@@ -196,6 +368,109 @@ class _SearchPageState extends State<SearchPage> {
                           ),
                         ),
 
+                        if (isSearching)
+                          const Padding(
+                            padding: EdgeInsets.all(20),
+                            child: Center(child: CircularProgressIndicator()),
+                          ),
+
+                        if (!isSearching &&
+                            searchController.text.trim().isNotEmpty &&
+                            searchResults.isEmpty)
+                          const Padding(
+                            padding: EdgeInsets.all(20),
+
+                            child: Center(
+                              child: Text(
+                                'No products found',
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 15,
+                                ),
+                              ),
+                            ),
+                          ),
+
+                        if (!isSearching &&
+                            searchController.text.trim().isNotEmpty &&
+                            searchResults.isNotEmpty)
+                          ListView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+
+                            itemCount: searchResults.length,
+
+                            itemBuilder: (context, index) {
+                              final product = searchResults[index];
+
+                              return Card(
+                                margin: const EdgeInsets.only(bottom: 10),
+
+                                child: ListTile(
+                                  // PRODUCT IMAGE
+                                  leading: ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+
+                                    child: Image.network(
+                                      product.imageUrl,
+
+                                      width: 55,
+                                      height: 55,
+
+                                      fit: BoxFit.cover,
+
+                                      errorBuilder: (
+                                        context,
+                                        error,
+                                        stackTrace,
+                                      ) {
+                                        return Container(
+                                          width: 55,
+                                          height: 55,
+
+                                          color: Colors.grey.shade200,
+
+                                          child: const Icon(
+                                            Icons.image_not_supported,
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+
+                                  // PRODUCT NAME
+                                  title: Text(
+                                    product.name,
+
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+
+                                  // BRAND
+                                  subtitle: Text(
+                                    product.brand,
+
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+
+                                  // PRICE
+                                  trailing: Text(
+                                    '\$${product.price.toStringAsFixed(2)}',
+
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+
                         SizedBox(height: isLandscape ? 18.h : 25.h),
 
                         // ==================================================
@@ -221,9 +496,7 @@ class _SearchPageState extends State<SearchPage> {
 
                             TextButton(
                               onPressed: () {
-                                setState(() {
-                                  recentsearches.clear();
-                                });
+                                clearRecentSearches();
                               },
 
                               style: TextButton.styleFrom(
@@ -256,37 +529,37 @@ class _SearchPageState extends State<SearchPage> {
 
                           children:
                               recentsearches.map((search) {
-                                return Chip(
-                                  label: Text(
-                                    search,
-                                    style: TextStyle(
-                                      fontSize: isLandscape ? 11.sp : 13.sp,
-                                    ),
-                                  ),
-
-                                  backgroundColor: const Color.fromARGB(
-                                    0,
-                                    192,
-                                    185,
-                                    51,
-                                  ),
-
-                                  side: const BorderSide(
-                                    color: Color.fromARGB(41, 192, 152, 51),
-                                    width: 1.5,
-                                  ),
-
-                                  deleteIcon: Icon(
-                                    Icons.close,
-                                    color: Colors.grey,
-                                    size: isLandscape ? 16.sp : 18.sp,
-                                  ),
-
-                                  onDeleted: () {
-                                    setState(() {
-                                      recentsearches.remove(search);
-                                    });
+                                return GestureDetector(
+                                  onTap: () {
+                                    searchController.text = search;
+                                    searchProducts(search);
                                   },
+
+                                  child: Chip(
+                                    label: Text(
+                                      search,
+                                      style: TextStyle(
+                                        fontSize: isLandscape ? 11.sp : 13.sp,
+                                      ),
+                                    ),
+
+                                    backgroundColor: Colors.transparent,
+
+                                    side: const BorderSide(
+                                      color: Color.fromARGB(41, 192, 152, 51),
+                                      width: 1.5,
+                                    ),
+
+                                    deleteIcon: Icon(
+                                      Icons.close,
+                                      color: Colors.grey,
+                                      size: isLandscape ? 16.sp : 18.sp,
+                                    ),
+
+                                    onDeleted: () {
+                                      removeRecentSearch(search);
+                                    },
+                                  ),
                                 );
                               }).toList(),
                         ),
@@ -638,5 +911,13 @@ class _SearchPageState extends State<SearchPage> {
         );
       },
     );
+  }
+
+  @override
+  void dispose() {
+    searchTimer?.cancel();
+    searchController.dispose();
+
+    super.dispose();
   }
 }
