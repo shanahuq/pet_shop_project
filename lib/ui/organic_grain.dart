@@ -15,6 +15,16 @@ class OrganicGrain extends StatefulWidget {
 class _OrganicGrainState extends State<OrganicGrain> {
   String selectedWeight = '2kg';
 
+  final Map<String, double> weightPrices = {
+    '2kg': 20.00,
+    '5kg': 45.00,
+    '10kg': 80.00,
+  };
+
+  double get selectedPrice {
+    return weightPrices[selectedWeight] ?? getPrice(widget.product['price']);
+  }
+
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -352,8 +362,8 @@ class _OrganicGrainState extends State<OrganicGrain> {
                                   widget.product,
                                   widget.product['name']?.toString() ?? '',
                                   widget.product['brand']?.toString() ?? '',
-                                  getPrice(widget.product['price']),
-                                  true,
+                                  selectedPrice,
+                                  isLandscape,
                                 ),
                               ),
                             ],
@@ -376,7 +386,7 @@ class _OrganicGrainState extends State<OrganicGrain> {
                                 widget.product,
                                 widget.product['name']?.toString() ?? '',
                                 widget.product['brand']?.toString() ?? '',
-                                getPrice(widget.product['price']),
+                                selectedPrice, // ✅ use selectedPrice
                                 isLandscape,
                               ),
                             ],

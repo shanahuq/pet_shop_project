@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:pet_shop_project/ui/organic_grain.dart';
 import 'package:pet_shop_project/ui/search_categories.dart';
 import 'dart:async';
 
@@ -397,7 +398,6 @@ class _SearchPageState extends State<SearchPage> {
                           ListView.builder(
                             shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
-
                             itemCount: searchResults.length,
 
                             itemBuilder: (context, index) {
@@ -407,16 +407,40 @@ class _SearchPageState extends State<SearchPage> {
                                 margin: const EdgeInsets.only(bottom: 10),
 
                                 child: ListTile(
+                                  // ==========================================
+                                  // CLICK PRODUCT
+                                  // ==========================================
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder:
+                                            (context) => OrganicGrain(
+                                              product: {
+                                                'id': product.id,
+                                                'productId': product.id,
+                                                'name': product.name,
+                                                'brand': product.brand,
+                                                'category': product.category,
+                                                'imageUrl': product.imageUrl,
+                                                'price': product.price,
+                                                'rating': product.rating,
+                                              },
+                                            ),
+                                      ),
+                                    );
+                                  },
+
+                                  // ==========================================
                                   // PRODUCT IMAGE
+                                  // ==========================================
                                   leading: ClipRRect(
                                     borderRadius: BorderRadius.circular(8),
 
                                     child: Image.network(
                                       product.imageUrl,
-
                                       width: 55,
                                       height: 55,
-
                                       fit: BoxFit.cover,
 
                                       errorBuilder: (
@@ -427,9 +451,7 @@ class _SearchPageState extends State<SearchPage> {
                                         return Container(
                                           width: 55,
                                           height: 55,
-
                                           color: Colors.grey.shade200,
-
                                           child: const Icon(
                                             Icons.image_not_supported,
                                           ),
@@ -438,10 +460,11 @@ class _SearchPageState extends State<SearchPage> {
                                     ),
                                   ),
 
+                                  // ==========================================
                                   // PRODUCT NAME
+                                  // ==========================================
                                   title: Text(
                                     product.name,
-
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
 
@@ -450,15 +473,18 @@ class _SearchPageState extends State<SearchPage> {
                                     ),
                                   ),
 
+                                  // ==========================================
                                   // BRAND
+                                  // ==========================================
                                   subtitle: Text(
                                     product.brand,
-
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
 
+                                  // ==========================================
                                   // PRICE
+                                  // ==========================================
                                   trailing: Text(
                                     '\$${product.price.toStringAsFixed(2)}',
 

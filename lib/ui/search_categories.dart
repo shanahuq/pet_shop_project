@@ -21,6 +21,7 @@ class SearchCategories extends StatefulWidget {
 
 class _SearchCategoriesState extends State<SearchCategories> {
   int selectedTab = 0;
+  int visibleProductCount = 6;
 
   final List<String> tabs = ['All Items', 'Toys', 'Walk Gear', 'Wellness'];
 
@@ -862,8 +863,10 @@ class _SearchCategoriesState extends State<SearchCategories> {
 
                               padding: EdgeInsets.zero,
 
-                              itemCount: products.length,
-
+                              itemCount:
+                                  products.length > visibleProductCount
+                                      ? visibleProductCount
+                                      : products.length,
                               gridDelegate:
                                   SliverGridDelegateWithFixedCrossAxisCount(
                                     crossAxisCount: crossAxisCount,
@@ -1355,14 +1358,26 @@ class _SearchCategoriesState extends State<SearchCategories> {
                   // SHOWING ITEMS
                   // ==================================================
                   Center(
-                    child: Text(
-                      'Showing 6 of 24 items',
+                    child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                      stream: productsStream,
+                      builder: (context, snapshot) {
+                        final int totalProductCount =
+                            snapshot.data?.docs.length ?? 0;
 
-                      style: TextStyle(
-                        fontWeight: FontWeight.w400,
-                        fontSize: 12.sp,
-                        color: const Color(0xff57423D),
-                      ),
+                        final int displayedProductCount =
+                            totalProductCount > visibleProductCount
+                                ? visibleProductCount
+                                : totalProductCount;
+
+                        return Text(
+                          'Showing $displayedProductCount of $totalProductCount items',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w400,
+                            fontSize: 12.sp,
+                            color: const Color(0xff57423D),
+                          ),
+                        );
+                      },
                     ),
                   ),
 
