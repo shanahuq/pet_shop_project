@@ -442,7 +442,7 @@ class CartTab extends StatelessWidget {
                   image: data['image']?.toString() ?? '',
                   name: data['name']?.toString() ?? '',
                   brand: data['brand']?.toString() ?? '',
-                  price: '\$${price.toStringAsFixed(2)}',
+                  price: price,
                   quantity: quantity,
                 ),
               );
@@ -663,7 +663,7 @@ class CartItem extends StatelessWidget {
   final String image;
   final String name;
   final String brand;
-  final String price;
+  final double price;
   final int quantity;
 
   const CartItem({
@@ -713,6 +713,7 @@ class CartItem extends StatelessWidget {
     return OrientationBuilder(
       builder: (context, orientation) {
         final bool isLandscape = orientation == Orientation.landscape;
+        final double totalPrice = price * quantity;
 
         final double imageSize = isLandscape ? 65.w : 75.w;
 
@@ -843,7 +844,7 @@ class CartItem extends StatelessWidget {
                                 // ========================================================
                                 Expanded(
                                   child: Text(
-                                    price,
+                                    '\$${totalPrice.toStringAsFixed(2)}',
                                     maxLines: 1,
                                     softWrap: false,
                                     overflow: TextOverflow.ellipsis,

@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import 'package:pet_shop_project/ui/organic_grain.dart';
+
 class CheckoutPage extends StatefulWidget {
   const CheckoutPage({super.key});
 
@@ -15,10 +17,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   final TextEditingController addressController = TextEditingController();
+
   final TextEditingController cityController = TextEditingController();
+
   final TextEditingController phoneController = TextEditingController();
 
   String selectedPayment = 'Cash on Delivery';
+
   bool isPlacingOrder = false;
 
   // Shipping fee
@@ -32,9 +37,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
     super.dispose();
   }
 
-  // ------------------------------------------------------------
+  // ============================================================
   // GET CART
-  // ------------------------------------------------------------
+  // ============================================================
 
   Stream<QuerySnapshot> get cartStream {
     final user = _auth.currentUser;
@@ -50,9 +55,132 @@ class _CheckoutPageState extends State<CheckoutPage> {
         .snapshots();
   }
 
-  // ------------------------------------------------------------
+  // ============================================================
+  // CONVERT PRICE SAFELY
+  // ============================================================
+
+  double getPrice(dynamic priceData) {
+    if (priceData is num) {
+      return priceData.toDouble();
+    }
+
+    if (priceData is String) {
+      return double.tryParse(
+            priceData.replaceAll('\$', '').replaceAll(',', '').trim(),
+          ) ??
+          0.0;
+    }
+
+    return 0.0;
+  }
+
+  // ============================================================
+  // OPEN PRODUCT DETAIL PAGE
+  // ============================================================
+
+  Future<void> openProductDetails(Map<String, dynamic> cartData) async {
+    try {
+      // ----------------------------------------------------------
+      // Get the original product document ID
+      // ----------------------------------------------------------
+
+      final String productDocId =
+          cartData['productDocId']?.toString() ??
+          cartData['productId']?.toString() ??
+          '';
+
+      if (productDocId.isEmpty) {
+        showMessage('Product information is not available.');
+        return;
+      }
+
+      // ----------------------------------------------------------
+      // Get original product from Firestore
+      // ----------------------------------------------------------
+
+      final DocumentSnapshot productSnapshot =
+          await _firestore.collection('products').doc(productDocId).get();
+
+      if (!productSnapshot.exists) {
+        showMessage('Product details could not be found.');
+        return;
+      }
+
+      final Map<String, dynamic> data =
+          productSnapshot.data() as Map<String, dynamic>;
+
+      // ----------------------------------------------------------
+      // Create complete product map
+      //
+      // This is important because OrganicGrain needs
+      // price2kg, price5kg and price10kg.
+      // ----------------------------------------------------------
+
+      final Map<String, dynamic> product = {
+        // Firestore document ID
+        'id': productSnapshot.id,
+
+        // Product ID
+        'productId':
+            data['productId'] ?? cartData['productId'] ?? productSnapshot.id,
+
+        // Product document ID
+        'productDocId': productSnapshot.id,
+
+        // Name
+        'name': data['name'] ?? cartData['name'] ?? '',
+
+        // Brand
+        'brand': data['brand'] ?? cartData['brand'] ?? '',
+
+        // Category
+        'category': data['category'] ?? cartData['category'] ?? '',
+
+        // Image
+        'imageUrl':
+            data['imageUrl'] ?? cartData['imageUrl'] ?? cartData['image'] ?? '',
+
+        // --------------------------------------------------------
+        // WEIGHT PRICES
+        // --------------------------------------------------------
+        'price2kg': data['price2kg'] ?? data['price2Kg'] ?? 0,
+
+        'price5kg': data['price5kg'] ?? data['price5Kg'] ?? 0,
+
+        'price10kg': data['price10kg'] ?? data['price10Kg'] ?? 0,
+
+        // Default price = 2kg
+        'price': data['price2kg'] ?? data['price2Kg'] ?? cartData['price'] ?? 0,
+
+        // Rating
+        'rating': data['rating'] ?? cartData['rating'] ?? 0,
+
+        // Other product fields from Firestore
+        ...data,
+      };
+
+      if (!mounted) return;
+
+      // ----------------------------------------------------------
+      // OPEN ORGANIC GRAIN DETAIL PAGE
+      // ----------------------------------------------------------
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => OrganicGrain(product: product)),
+      );
+    } catch (e) {
+      debugPrint('OPEN PRODUCT DETAILS ERROR: $e');
+
+      if (!mounted) return;
+
+      showMessage('Unable to open product details.');
+    }
+  }
+
+  // ============================================================
   // PLACE ORDER
-  // ------------------------------------------------------------
+  // ============================================================
 
   Future<void> placeOrder(List<QueryDocumentSnapshot> cartItems) async {
     final user = _auth.currentUser;
@@ -95,19 +223,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
       for (final doc in cartItems) {
         final data = doc.data() as Map<String, dynamic>;
 
-        final dynamic priceData = data['price'];
-
-        double price = 0;
-
-        if (priceData is num) {
-          price = priceData.toDouble();
-        } else if (priceData is String) {
-          price =
-              double.tryParse(
-                priceData.replaceAll('\$', '').replaceAll(',', '').trim(),
-              ) ??
-              0;
-        }
+        final double price = getPrice(data['price']);
 
         final int quantity = (data['quantity'] as num?)?.toInt() ?? 1;
 
@@ -115,35 +231,63 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
         orderItems.add({
           'productId': data['productId'] ?? doc.id,
+
+          'productDocId': data['productDocId'] ?? doc.id,
+
           'name': data['name'] ?? '',
+
           'brand': data['brand'] ?? '',
+
           'image': data['image'] ?? '',
+
+          'imageUrl': data['imageUrl'] ?? data['image'] ?? '',
+
           'price': price,
+
+          'weight': data['weight'] ?? '2kg',
+
           'quantity': quantity,
         });
       }
 
       final double total = subtotal + shippingFee;
 
-      // Create order document
+      // ========================================================
+      // CREATE ORDER
+      // ========================================================
+
       final orderRef = _firestore.collection('orders').doc();
 
       await orderRef.set({
         'orderId': orderRef.id,
+
         'userId': user.uid,
+
         'items': orderItems,
+
         'subtotal': subtotal,
+
         'shipping': shippingFee,
+
         'total': total,
+
         'paymentMethod': selectedPayment,
+
         'deliveryAddress': addressController.text.trim(),
+
         'city': cityController.text.trim(),
+
         'phone': phoneController.text.trim(),
+
         'status': 'Pending',
+
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      // Delete cart items
+      // ========================================================
+      // DELETE CART ITEMS
+      // ========================================================
+
       final batch = _firestore.batch();
 
       for (final doc in cartItems) {
@@ -164,7 +308,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
         isPlacingOrder = false;
       });
 
-      // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Order placed successfully!'),
@@ -172,7 +315,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
         ),
       );
 
-      // Go back
       Navigator.pop(context);
     } catch (e) {
       debugPrint('PLACE ORDER ERROR: $e');
@@ -187,9 +329,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
     }
   }
 
-  // ------------------------------------------------------------
+  // ============================================================
   // MESSAGE
-  // ------------------------------------------------------------
+  // ============================================================
 
   void showMessage(String message) {
     if (!mounted) return;
@@ -199,14 +341,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  // ------------------------------------------------------------
-  // PAYMENT METHOD
-  // ------------------------------------------------------------
+  // ============================================================
+  // PAYMENT OPTION
+  // ============================================================
 
-  Widget paymentOption({
-    required String title,
-    required IconData icon,
-  }) {
+  Widget paymentOption({required String title, required IconData icon}) {
     final bool selected = selectedPayment == title;
 
     return GestureDetector(
@@ -215,51 +354,41 @@ class _CheckoutPageState extends State<CheckoutPage> {
           selectedPayment = title;
         });
       },
+
       child: Container(
         margin: EdgeInsets.only(bottom: 10.h),
-        padding: EdgeInsets.symmetric(
-          horizontal: 15.w,
-          vertical: 14.h,
-        ),
+
+        padding: EdgeInsets.symmetric(horizontal: 15.w, vertical: 14.h),
+
         decoration: BoxDecoration(
           color: selected ? const Color(0xfffff3f0) : Colors.white,
+
           borderRadius: BorderRadius.circular(14.r),
+
           border: Border.all(
-            color:
-                selected
-                    ? const Color(0xffA73927)
-                    : const Color(0xffDFC0BA),
+            color: selected ? const Color(0xffA73927) : const Color(0xffDFC0BA),
+
             width: selected ? 1.5 : 1,
           ),
         ),
+
         child: Row(
           children: [
-            Icon(
-              icon,
-              color: const Color(0xffA73927),
-              size: 24.sp,
-            ),
+            Icon(icon, color: const Color(0xffA73927), size: 24.sp),
 
             SizedBox(width: 12.w),
 
             Expanded(
               child: Text(
                 title,
-                style: TextStyle(
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.w500,
-                ),
+                style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w500),
               ),
             ),
 
             Icon(
-              selected
-                  ? Icons.radio_button_checked
-                  : Icons.radio_button_off,
-              color:
-                  selected
-                      ? const Color(0xffA73927)
-                      : Colors.grey,
+              selected ? Icons.radio_button_checked : Icons.radio_button_off,
+
+              color: selected ? const Color(0xffA73927) : Colors.grey,
             ),
           ],
         ),
@@ -267,30 +396,28 @@ class _CheckoutPageState extends State<CheckoutPage> {
     );
   }
 
-  // ------------------------------------------------------------
+  // ============================================================
   // BUILD
-  // ------------------------------------------------------------
+  // ============================================================
 
   @override
   Widget build(BuildContext context) {
     final user = _auth.currentUser;
 
     if (user == null) {
-      return const Scaffold(
-        body: Center(
-          child: Text('Please login first'),
-        ),
-      );
+      return const Scaffold(body: Center(child: Text('Please login first')));
     }
 
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_outlined),
+
           onPressed: () {
             Navigator.pop(context);
           },
         ),
+
         title: Text(
           'Checkout',
           style: TextStyle(
@@ -299,16 +426,16 @@ class _CheckoutPageState extends State<CheckoutPage> {
             color: const Color(0xffA73927),
           ),
         ),
+
         centerTitle: true,
       ),
 
       body: StreamBuilder<QuerySnapshot>(
         stream: cartStream,
+
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
+            return const Center(child: CircularProgressIndicator());
           }
 
           if (snapshot.hasError) {
@@ -324,41 +451,25 @@ class _CheckoutPageState extends State<CheckoutPage> {
             return const Center(
               child: Text(
                 'Your cart is empty',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w500,
-                ),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
               ),
             );
           }
 
           final cartItems = snapshot.data!.docs;
 
-          // Calculate subtotal
+          // ======================================================
+          // CALCULATE SUBTOTAL
+          // ======================================================
+
           double subtotal = 0;
 
           for (final doc in cartItems) {
             final data = doc.data() as Map<String, dynamic>;
 
-            final dynamic priceData = data['price'];
+            final double price = getPrice(data['price']);
 
-            double price = 0;
-
-            if (priceData is num) {
-              price = priceData.toDouble();
-            } else if (priceData is String) {
-              price =
-                  double.tryParse(
-                    priceData
-                        .replaceAll('\$', '')
-                        .replaceAll(',', '')
-                        .trim(),
-                  ) ??
-                  0;
-            }
-
-            final int quantity =
-                (data['quantity'] as num?)?.toInt() ?? 1;
+            final int quantity = (data['quantity'] as num?)?.toInt() ?? 1;
 
             subtotal += price * quantity;
           }
@@ -367,18 +478,15 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
           return SafeArea(
             child: SingleChildScrollView(
-              padding: EdgeInsets.symmetric(
-                horizontal: 25.w,
-                vertical: 15.h,
-              ),
+              padding: EdgeInsets.symmetric(horizontal: 25.w, vertical: 15.h),
+
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
 
+                children: [
                   // =================================================
                   // DELIVERY ADDRESS
                   // =================================================
-
                   sectionTitle(
                     icon: Icons.location_on_outlined,
                     title: 'Delivery Address',
@@ -412,9 +520,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   SizedBox(height: 25.h),
 
                   // =================================================
-                  // PAYMENT
+                  // PAYMENT METHOD
                   // =================================================
-
                   sectionTitle(
                     icon: Icons.payment_outlined,
                     title: 'Payment Method',
@@ -442,7 +549,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   // =================================================
                   // ORDER SUMMARY
                   // =================================================
-
                   sectionTitle(
                     icon: Icons.shopping_bag_outlined,
                     title: 'Order Summary',
@@ -452,133 +558,151 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
                   Container(
                     padding: EdgeInsets.all(15.w),
+
                     decoration: BoxDecoration(
                       color: Colors.white,
+
                       borderRadius: BorderRadius.circular(16.r),
-                      border: Border.all(
-                        color: const Color(0xffDFC0BA),
-                      ),
+
+                      border: Border.all(color: const Color(0xffDFC0BA)),
                     ),
+
                     child: Column(
                       children: [
-
-                        // CART ITEMS
+                        // =================================================
+                        // CART PRODUCTS
+                        // =================================================
                         ListView.builder(
                           shrinkWrap: true,
-                          physics:
-                              const NeverScrollableScrollPhysics(),
+
+                          physics: const NeverScrollableScrollPhysics(),
+
                           itemCount: cartItems.length,
+
                           itemBuilder: (context, index) {
                             final data =
-                                cartItems[index].data()
-                                    as Map<String, dynamic>;
+                                cartItems[index].data() as Map<String, dynamic>;
 
-                            final dynamic priceData =
-                                data['price'];
-
-                            double price = 0;
-
-                            if (priceData is num) {
-                              price = priceData.toDouble();
-                            } else if (priceData is String) {
-                              price =
-                                  double.tryParse(
-                                    priceData
-                                        .replaceAll('\$', '')
-                                        .replaceAll(',', '')
-                                        .trim(),
-                                  ) ??
-                                  0;
-                            }
+                            final double price = getPrice(data['price']);
 
                             final int quantity =
-                                (data['quantity'] as num?)
-                                    ?.toInt() ??
-                                1;
+                                (data['quantity'] as num?)?.toInt() ?? 1;
 
-                            return Padding(
-                              padding: EdgeInsets.only(
-                                bottom: 12.h,
-                              ),
-                              child: Row(
-                                children: [
+                            final double itemTotal = price * quantity;
 
-                                  // IMAGE
-                                  ClipRRect(
-                                    borderRadius:
-                                        BorderRadius.circular(10.r),
-                                    child: Image.network(
-                                      data['image']?.toString() ??
-                                          '',
-                                      width: 55.w,
-                                      height: 55.w,
-                                      fit: BoxFit.cover,
-                                      errorBuilder:
-                                          (
-                                            context,
-                                            error,
-                                            stackTrace,
-                                          ) {
-                                        return Container(
-                                          width: 55.w,
-                                          height: 55.w,
-                                          color:
-                                              Colors.grey.shade200,
-                                          child: const Icon(
-                                            Icons
-                                                .image_not_supported,
-                                            color: Colors.grey,
-                                          ),
-                                        );
-                                      },
+                            return GestureDetector(
+                              // =================================================
+                              // CLICK PRODUCT
+                              // =================================================
+                              onTap: () {
+                                openProductDetails(data);
+                              },
+
+                              child: Container(
+                                margin: EdgeInsets.only(bottom: 12.h),
+
+                                padding: EdgeInsets.symmetric(vertical: 5.h),
+
+                                child: Row(
+                                  children: [
+                                    // =========================================
+                                    // IMAGE
+                                    // =========================================
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(10.r),
+
+                                      child: Image.network(
+                                        data['imageUrl']?.toString() ??
+                                            data['image']?.toString() ??
+                                            '',
+
+                                        width: 55.w,
+
+                                        height: 55.w,
+
+                                        fit: BoxFit.cover,
+
+                                        errorBuilder: (
+                                          context,
+                                          error,
+                                          stackTrace,
+                                        ) {
+                                          return Container(
+                                            width: 55.w,
+                                            height: 55.w,
+                                            color: Colors.grey.shade200,
+                                            child: const Icon(
+                                              Icons.image_not_supported,
+                                              color: Colors.grey,
+                                            ),
+                                          );
+                                        },
+                                      ),
                                     ),
-                                  ),
 
-                                  SizedBox(width: 12.w),
+                                    SizedBox(width: 12.w),
 
-                                  // NAME
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          data['name']
-                                                  ?.toString() ??
-                                              '',
-                                          maxLines: 2,
-                                          overflow:
-                                              TextOverflow.ellipsis,
-                                          style: TextStyle(
-                                            fontWeight:
-                                                FontWeight.w600,
-                                            fontSize: 13.sp,
+                                    // =========================================
+                                    // PRODUCT NAME
+                                    // =========================================
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+
+                                        children: [
+                                          Text(
+                                            data['name']?.toString() ?? '',
+
+                                            maxLines: 2,
+
+                                            overflow: TextOverflow.ellipsis,
+
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 13.sp,
+                                            ),
                                           ),
-                                        ),
 
-                                        SizedBox(height: 3.h),
+                                          SizedBox(height: 3.h),
 
-                                        Text(
-                                          'Qty: $quantity',
-                                          style: TextStyle(
-                                            fontSize: 11.sp,
-                                            color: Colors.grey,
+                                          Text(
+                                            'Qty: $quantity',
+
+                                            style: TextStyle(
+                                              fontSize: 11.sp,
+                                              color: Colors.grey,
+                                            ),
                                           ),
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
-                                  ),
 
-                                  Text(
-                                    '\$${(price * quantity).toStringAsFixed(2)}',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 13.sp,
-                                      color:
-                                          const Color(0xffA73927),
+                                    // =========================================
+                                    // PRICE
+                                    // =========================================
+                                    Text(
+                                      '\$${itemTotal.toStringAsFixed(2)}',
+
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 13.sp,
+                                        color: const Color(0xffA73927),
+                                      ),
                                     ),
-                                  ),
-                                ],
+
+                                    SizedBox(width: 8.w),
+
+                                    // =========================================
+                                    // ARROW
+                                    // =========================================
+                                    Icon(
+                                      Icons.arrow_forward_ios,
+                                      size: 14.sp,
+                                      color: const Color(0xffA73927),
+                                    ),
+                                  ],
+                                ),
                               ),
                             );
                           },
@@ -588,7 +712,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
                         SizedBox(height: 10.h),
 
+                        // =================================================
                         // SUBTOTAL
+                        // =================================================
                         summaryRow(
                           'Subtotal',
                           '\$${subtotal.toStringAsFixed(2)}',
@@ -596,7 +722,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
                         SizedBox(height: 8.h),
 
+                        // =================================================
                         // SHIPPING
+                        // =================================================
                         summaryRow(
                           'Shipping',
                           '\$${shippingFee.toStringAsFixed(2)}',
@@ -608,10 +736,12 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
                         SizedBox(height: 10.h),
 
+                        // =================================================
                         // TOTAL
+                        // =================================================
                         Row(
-                          mainAxisAlignment:
-                              MainAxisAlignment.spaceBetween,
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+
                           children: [
                             Text(
                               'Total',
@@ -620,13 +750,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
                                 fontSize: 18.sp,
                               ),
                             ),
+
                             Text(
                               '\$${total.toStringAsFixed(2)}',
                               style: TextStyle(
                                 fontWeight: FontWeight.w700,
                                 fontSize: 18.sp,
-                                color:
-                                    const Color(0xffA73927),
+                                color: const Color(0xffA73927),
                               ),
                             ),
                           ],
@@ -640,10 +770,11 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   // =================================================
                   // PLACE ORDER
                   // =================================================
-
                   SizedBox(
                     width: double.infinity,
+
                     height: 55.h,
+
                     child: ElevatedButton(
                       onPressed:
                           isPlacingOrder
@@ -651,41 +782,42 @@ class _CheckoutPageState extends State<CheckoutPage> {
                               : () {
                                 placeOrder(cartItems);
                               },
+
                       style: ElevatedButton.styleFrom(
-                        backgroundColor:
-                            const Color(0xffA73927),
-                        disabledBackgroundColor:
-                            Colors.grey,
+                        backgroundColor: const Color(0xffA73927),
+
+                        disabledBackgroundColor: Colors.grey,
+
                         shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(16.r),
+                          borderRadius: BorderRadius.circular(16.r),
                         ),
                       ),
+
                       child:
                           isPlacingOrder
                               ? const SizedBox(
                                 width: 25,
                                 height: 25,
-                                child:
-                                    CircularProgressIndicator(
-                                      color: Colors.white,
-                                      strokeWidth: 2,
-                                    ),
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
                               )
                               : Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.center,
+                                mainAxisAlignment: MainAxisAlignment.center,
+
                                 children: [
                                   Text(
                                     'Place Order',
                                     style: TextStyle(
                                       color: Colors.white,
-                                      fontWeight:
-                                          FontWeight.w600,
+                                      fontWeight: FontWeight.w600,
                                       fontSize: 16.sp,
                                     ),
                                   ),
+
                                   SizedBox(width: 10.w),
+
                                   const Icon(
                                     Icons.arrow_forward,
                                     color: Colors.white,
@@ -709,18 +841,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
   // SECTION TITLE
   // ===============================================================
 
-  Widget sectionTitle({
-    required IconData icon,
-    required String title,
-  }) {
+  Widget sectionTitle({required IconData icon, required String title}) {
     return Row(
       children: [
-        Icon(
-          icon,
-          color: const Color(0xffA73927),
-          size: 23.sp,
-        ),
+        Icon(icon, color: const Color(0xffA73927), size: 23.sp),
+
         SizedBox(width: 8.w),
+
         Text(
           title,
           style: TextStyle(
@@ -739,42 +866,45 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
   Widget checkoutTextField({
     required TextEditingController controller,
+
     required String hint,
+
     required IconData icon,
+
     TextInputType keyboardType = TextInputType.text,
   }) {
     return TextField(
       controller: controller,
+
       keyboardType: keyboardType,
+
       decoration: InputDecoration(
-        prefixIcon: Icon(
-          icon,
-          color: const Color(0xffA73927),
-        ),
+        prefixIcon: Icon(icon, color: const Color(0xffA73927)),
+
         hintText: hint,
+
         filled: true,
+
         fillColor: Colors.white,
-        contentPadding: EdgeInsets.symmetric(
-          horizontal: 15.w,
-          vertical: 15.h,
-        ),
+
+        contentPadding: EdgeInsets.symmetric(horizontal: 15.w, vertical: 15.h),
+
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14.r),
-          borderSide: const BorderSide(
-            color: Color(0xffDFC0BA),
-          ),
+
+          borderSide: const BorderSide(color: Color(0xffDFC0BA)),
         ),
+
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14.r),
-          borderSide: const BorderSide(
-            color: Color(0xffDFC0BA),
-          ),
+
+          borderSide: const BorderSide(color: Color(0xffDFC0BA)),
         ),
+
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14.r),
-          borderSide: const BorderSide(
-            color: Color(0xffA73927),
-          ),
+
+          borderSide: const BorderSide(color: Color(0xffA73927)),
         ),
       ),
     );
@@ -787,20 +917,16 @@ class _CheckoutPageState extends State<CheckoutPage> {
   Widget summaryRow(String title, String value) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+
       children: [
         Text(
           title,
-          style: TextStyle(
-            fontSize: 14.sp,
-            color: const Color(0xff57423D),
-          ),
+          style: TextStyle(fontSize: 14.sp, color: const Color(0xff57423D)),
         ),
+
         Text(
           value,
-          style: TextStyle(
-            fontSize: 14.sp,
-            fontWeight: FontWeight.w600,
-          ),
+          style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w600),
         ),
       ],
     );

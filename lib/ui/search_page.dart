@@ -17,6 +17,7 @@ class SearchPage extends StatefulWidget {
 
 class _SearchPageState extends State<SearchPage> {
   final TextEditingController searchController = TextEditingController();
+  final FocusNode searchFocusNode = FocusNode();
 
   final ProductService productService = ProductService();
 
@@ -31,6 +32,10 @@ class _SearchPageState extends State<SearchPage> {
     super.initState();
 
     loadRecentSearches();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      searchFocusNode.requestFocus();
+    });
   }
 
   Future<void> searchProducts(String value, {bool saveHistory = false}) async {
@@ -272,6 +277,7 @@ class _SearchPageState extends State<SearchPage> {
 
                           child: TextField(
                             controller: searchController,
+                            focusNode: searchFocusNode,
 
                             keyboardType: TextInputType.text,
 
@@ -941,8 +947,8 @@ class _SearchPageState extends State<SearchPage> {
 
   @override
   void dispose() {
-    searchTimer?.cancel();
     searchController.dispose();
+    searchFocusNode.dispose();
 
     super.dispose();
   }

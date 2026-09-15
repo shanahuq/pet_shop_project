@@ -7,6 +7,7 @@ import 'package:pet_shop_project/ui/organic_grain.dart';
 import 'package:pet_shop_project/ui/search_categories.dart';
 import 'package:pet_shop_project/ui/view_all_categories.dart';
 import 'package:pet_shop_project/ui/view_all_products_list.dart';
+import 'package:pet_shop_project/ui/search_page.dart';
 
 import 'wish_list_page.dart';
 
@@ -105,8 +106,8 @@ class _HomePageState extends State<HomePage> {
     try {
       final productId = product['id'].toString();
 
-      final double price = getPrice(product['price']);
-
+      final String weight = '2kg';
+      final double price = getPrice(product['price2kg']);
       debugPrint('====================================');
       debugPrint('PRODUCT NAME: ${product['name']}');
       debugPrint('ORIGINAL PRICE: ${product['price']}');
@@ -131,6 +132,7 @@ class _HomePageState extends State<HomePage> {
         await cartItemRef.update({
           'quantity': currentQuantity + 1,
           'price': price,
+          'weight': weight,
         });
       } else {
         await cartItemRef.set({
@@ -139,6 +141,7 @@ class _HomePageState extends State<HomePage> {
           'brand': product['brand']?.toString() ?? '',
           'image': product['imageUrl']?.toString() ?? '',
           'price': price,
+          'weight': weight,
           'quantity': 1,
           'addedAt': FieldValue.serverTimestamp(),
         });
@@ -462,13 +465,15 @@ class _HomePageState extends State<HomePage> {
                             keyboardType: TextInputType.text,
                             maxLines: 1,
 
-                            // LEFT SIDE TEXT
                             textAlign: TextAlign.left,
 
-                            onChanged: (value) {
-                              setState(() {
-                                searchQuery = value.trim().toLowerCase();
-                              });
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const SearchPage(),
+                                ),
+                              );
                             },
 
                             style: TextStyle(
@@ -925,9 +930,14 @@ class _HomePageState extends State<HomePage> {
 
                 'imageUrl': data['imageUrl']?.toString() ?? '',
 
-                // Keep original value.
-                // getPrice() will safely convert it.
-                'price': data['price'] ?? 0,
+                // WEIGHT PRICES
+                'price2kg': data['price2kg'] ?? data['price2Kg'] ?? 0,
+                'price5kg': data['price5kg'] ?? data['price5Kg'] ?? 0,
+                'price10kg': data['price10kg'] ?? data['price10Kg'] ?? 0,
+
+                // Default price shown on Home = 2kg price
+                'price':
+                    data['price2kg'] ?? data['price2Kg'] ?? data['price'] ?? 0,
 
                 'rating': data['rating'] ?? 0,
 

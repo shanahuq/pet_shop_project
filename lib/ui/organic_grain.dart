@@ -15,14 +15,20 @@ class OrganicGrain extends StatefulWidget {
 class _OrganicGrainState extends State<OrganicGrain> {
   String selectedWeight = '2kg';
 
-  final Map<String, double> weightPrices = {
-    '2kg': 20.00,
-    '5kg': 45.00,
-    '10kg': 80.00,
-  };
-
   double get selectedPrice {
-    return weightPrices[selectedWeight] ?? getPrice(widget.product['price']);
+    switch (selectedWeight) {
+      case '2kg':
+        return getPrice(widget.product['price2kg']);
+
+      case '5kg':
+        return getPrice(widget.product['price5kg']);
+
+      case '10kg':
+        return getPrice(widget.product['price10kg']);
+
+      default:
+        return 0.0;
+    }
   }
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -166,7 +172,8 @@ class _OrganicGrainState extends State<OrganicGrain> {
         await cartItemRef.update({
           'quantity': currentQuantity + 1,
           'productDocId': productDocId,
-          'price': getPrice(product['price']),
+          'price': selectedPrice,
+          'weight': selectedWeight,
         });
       } else {
         await cartItemRef.set({
@@ -177,7 +184,11 @@ class _OrganicGrainState extends State<OrganicGrain> {
           'category': product['category']?.toString() ?? '',
           'image': product['imageUrl']?.toString() ?? '',
           'imageUrl': product['imageUrl']?.toString() ?? '',
-          'price': getPrice(product['price']),
+
+          // SELECTED WEIGHT PRICE
+          'price': selectedPrice,
+          'weight': selectedWeight,
+
           'quantity': 1,
           'addedAt': FieldValue.serverTimestamp(),
         });
@@ -284,6 +295,23 @@ class _OrganicGrainState extends State<OrganicGrain> {
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('====================================');
+    debugPrint('FULL PRODUCT DATA:');
+    debugPrint(widget.product.toString());
+
+    debugPrint('price2kg = ${widget.product['price2kg']}');
+    debugPrint('price5kg = ${widget.product['price5kg']}');
+    debugPrint('price10kg = ${widget.product['price10kg']}');
+
+    debugPrint('price2Kg = ${widget.product['price2Kg']}');
+    debugPrint('price5Kg = ${widget.product['price5Kg']}');
+    debugPrint('price10Kg = ${widget.product['price10Kg']}');
+
+    debugPrint('SELECTED WEIGHT = $selectedWeight');
+    debugPrint('SELECTED PRICE = $selectedPrice');
+
+    debugPrint('====================================');
+
     return OrientationBuilder(
       builder: (context, orientation) {
         final bool isLandscape = orientation == Orientation.landscape;

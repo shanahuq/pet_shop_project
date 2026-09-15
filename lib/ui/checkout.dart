@@ -18,7 +18,8 @@ class _CheckoutState extends State<Checkout> {
       appBar: AppBar(
         leading: GestureDetector(
           onTap: () => Navigator.pop(context),
-          child: Icon(Icons.arrow_back)),
+          child: Icon(Icons.arrow_back),
+        ),
         title: Text('Checkout', style: TextStyle(fontSize: 14.sp)),
         actions: [
           Padding(
