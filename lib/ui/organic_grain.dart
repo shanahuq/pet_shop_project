@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:pet_shop_project/ui/wish_list_page.dart';
 
 class OrganicGrain extends StatefulWidget {
   final Map<String, dynamic> product;
@@ -18,13 +19,13 @@ class _OrganicGrainState extends State<OrganicGrain> {
   double get selectedPrice {
     switch (selectedWeight) {
       case '2kg':
-        return getPrice(widget.product['price2kg']);
+        return getPrice(widget.product['price2Kg']);
 
       case '5kg':
-        return getPrice(widget.product['price5kg']);
+        return getPrice(widget.product['price5Kg']);
 
       case '10kg':
-        return getPrice(widget.product['price10kg']);
+        return getPrice(widget.product['price10Kg']);
 
       default:
         return 0.0;
@@ -58,6 +59,10 @@ class _OrganicGrainState extends State<OrganicGrain> {
   // PRICE
   // ============================================================
 
+  // ============================================================
+  // PRICE
+  // ============================================================
+
   double getPrice(dynamic value) {
     if (value is num) {
       return value.toDouble();
@@ -71,6 +76,26 @@ class _OrganicGrainState extends State<OrganicGrain> {
     }
 
     return 0.0;
+  }
+
+  // ============================================================
+  // WEIGHT
+  // ============================================================
+
+  double getWeightInKg(String weight) {
+    switch (weight) {
+      case '2kg':
+        return 2.0;
+
+      case '5kg':
+        return 5.0;
+
+      case '10kg':
+        return 10.0;
+
+      default:
+        return 0.0;
+    }
   }
 
   // ============================================================
@@ -120,95 +145,159 @@ class _OrganicGrainState extends State<OrganicGrain> {
   // ADD TO CART
   // ============================================================
 
+  // ============================================================
+  // ADD TO CART
+  // ============================================================
+
   Future<void> addToCart() async {
-    final user = _auth.currentUser;
-
-    if (user == null) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Please login first')));
-
-      return;
-    }
-
     try {
-      final product = widget.product;
+      final user = _auth.currentUser;
 
-      final String productDocId = product['id']?.toString() ?? '';
-
-      if (productDocId.isEmpty) {
-        if (!mounted) return;
-
+      if (user == null) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('Product ID is missing')));
-
+        ).showSnackBar(const SnackBar(content: Text('Please login first')));
         return;
       }
 
-      final cartItemRef = FirebaseFirestore.instance
+      // ----------------------------------------------------------
+      // CURRENT SELECTED VARIANT
+      // ----------------------------------------------------------
+
+      final double currentPrice = selectedPrice;
+      final double currentWeightKg = getWeightInKg(selectedWeight);
+
+      if (currentPrice <= 0 || currentWeightKg <= 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Invalid product price or weight')),
+        );
+        return;
+      }
+
+      // ----------------------------------------------------------
+      // PRODUCT FIRESTORE DOCUMENT ID
+      // ----------------------------------------------------------
+
+      final String productDocId =
+          widget.product['productDocId']?.toString() ??
+          widget.product['id']?.toString() ??
+          '';
+
+      if (productDocId.isEmpty) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Product ID not found')));
+        return;
+      }
+      String productImage = '';
+
+      for (final key in ['image', 'imageUrl', 'productImage']) {
+        final value = widget.product[key];
+
+        if (value is String && value.trim().isNotEmpty) {
+          productImage = value.trim();
+          break;
+        }
+      }
+      debugPrint('CART PRODUCT IMAGE = $productImage');
+
+      // ----------------------------------------------------------
+      // IMPORTANT:
+      // SAME PRODUCT + DIFFERENT WEIGHT = DIFFERENT CART ITEM
+      // ----------------------------------------------------------
+
+      final String cartItemId = '${productDocId}_$selectedWeight';
+
+      final cartItemRef = _firestore
           .collection('carts')
           .doc(user.uid)
           .collection('items')
-          .doc(productDocId);
+          .doc(cartItemId);
 
       final cartItem = await cartItemRef.get();
 
-      if (cartItem.exists) {
-        final data = cartItem.data();
+      // ==========================================================
+      // ITEM ALREADY EXISTS
+      // ==========================================================
 
-        final dynamic quantityValue = data?['quantity'];
+      if (cartItem.exists) {
+        final data = cartItem.data() as Map<String, dynamic>;
 
         int currentQuantity = 1;
+
+        final dynamic quantityValue = data['quantity'];
 
         if (quantityValue is num) {
           currentQuantity = quantityValue.toInt();
         } else if (quantityValue is String) {
-          currentQuantity = int.tryParse(quantityValue) ?? 1;
+          currentQuantity = int.tryParse(quantityValue.trim()) ?? 1;
         }
 
-        await cartItemRef.update({
-          'quantity': currentQuantity + 1,
-          'productDocId': productDocId,
-          'price': selectedPrice,
-          'weight': selectedWeight,
-        });
-      } else {
-        await cartItemRef.set({
-          'productId': product['productId']?.toString() ?? productDocId,
-          'productDocId': productDocId,
-          'name': product['name']?.toString() ?? '',
-          'brand': product['brand']?.toString() ?? '',
-          'category': product['category']?.toString() ?? '',
-          'image': product['imageUrl']?.toString() ?? '',
-          'imageUrl': product['imageUrl']?.toString() ?? '',
+        final int newQuantity = currentQuantity + 1;
 
-          // SELECTED WEIGHT PRICE
-          'price': selectedPrice,
+        final double newTotalPrice = currentPrice * newQuantity;
+
+        await cartItemRef.update({
+          'quantity': newQuantity,
+
+          'image': productImage,
+          'imageUrl': productImage,
+
           'weight': selectedWeight,
+          'totalWeightKg': currentWeightKg * newQuantity,
+
+          'price': currentPrice,
+          'totalPrice': newTotalPrice,
+
+          'productDocId': productDocId,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
+      // ==========================================================
+      // NEW ITEM
+      // ==========================================================
+      else {
+        await cartItemRef.set({
+          'productId': widget.product['productId']?.toString() ?? productDocId,
+
+          'productDocId': productDocId,
+
+          'name': widget.product['name']?.toString() ?? '',
+
+          'brand': widget.product['brand']?.toString() ?? '',
+
+          'image': productImage,
+          'imageUrl': productImage,
+          // Selected weight
+          'weight': selectedWeight,
+          'totalWeightKg': currentWeightKg,
+
+          // Selected weight price
+          'price': currentPrice,
+          'totalPrice': currentPrice,
 
           'quantity': 1,
-          'addedAt': FieldValue.serverTimestamp(),
+
+          'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
         });
       }
 
-      if (!mounted) return;
+      // ----------------------------------------------------------
+      // SUCCESS MESSAGE
+      // ----------------------------------------------------------
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${product['name'] ?? 'Product'} added to cart'),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$selectedWeight added to cart')),
+        );
+      }
     } catch (e) {
-      debugPrint('ADD TO CART ERROR: $e');
-
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to add product to cart: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to add to cart: $e')));
+      }
     }
   }
 
@@ -329,7 +418,9 @@ class _OrganicGrainState extends State<OrganicGrain> {
                 color: const Color(0xff650700),
                 size: isLandscape ? 22 : 25,
               ),
-              onPressed: () => Navigator.pop(context),
+              onPressed: () {
+                Navigator.pop(context);
+              },
             ),
 
             title: Text(
@@ -340,6 +431,23 @@ class _OrganicGrainState extends State<OrganicGrain> {
                 fontWeight: FontWeight.bold,
               ),
             ),
+            actions: [
+              Padding(
+                padding: EdgeInsets.only(right: 30.w),
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => WishListPage()),
+                    );
+                  },
+                  child: Icon(
+                    Icons.shopping_cart_outlined,
+                    color: Color(0xffA73927),
+                  ),
+                ),
+              ),
+            ],
           ),
 
           body: SafeArea(

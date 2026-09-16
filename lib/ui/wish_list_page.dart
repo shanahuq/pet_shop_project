@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:pet_shop_project/ui/checkout_page.dart';
+import 'package:pet_shop_project/ui/home_page.dart';
+import 'package:pet_shop_project/ui/search_page.dart';
 import 'organic_grain.dart';
 
 /// ============================================================
@@ -87,12 +89,26 @@ Future<void> openProductDetails(
       return;
     }
 
+    // Convert price to double
+    // double productPrice = 0.0;
+
+    // final priceData = productData['price'];
+
+    // if (priceData is num) {
+    //   productPrice = priceData.toDouble();
+    // } else if (priceData is String) {
+    //   productPrice =
+    //       double.tryParse(
+    //         priceData.replaceAll('\$', '').replaceAll(',', '').trim(),
+    //       ) ??
+    //       0.0;
+    // }
+
     final product = {
       ...productData,
       'id': productDoc.id,
       'productDocId': productDoc.id,
     };
-
     // ----------------------------------------------------------
     // STEP 6: Open product details
     // ----------------------------------------------------------
@@ -145,19 +161,14 @@ class _WishListPageState extends State<WishListPage> {
           // ----------------------------------------------------
           // PROFILE IMAGE
           // ----------------------------------------------------
-          leading: Padding(
-            padding: EdgeInsets.only(left: 16.w),
-            child: CircleAvatar(
-              radius: 18.r,
-              child: ClipOval(
-                child: Image.asset(
-                  'assets/profilepicture.png',
-                  fit: BoxFit.cover,
-                  width: 36.w,
-                  height: 36.h,
-                ),
-              ),
-            ),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded),
+            onPressed: () {
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (context) => const HomePage()),
+                (route) => false,
+              );
+            },
           ),
 
           // ----------------------------------------------------
@@ -175,62 +186,62 @@ class _WishListPageState extends State<WishListPage> {
           // ----------------------------------------------------
           // ACTIONS
           // ----------------------------------------------------
-          actions: [
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 8.w),
-              child: Icon(Icons.search, size: 25.sp),
-            ),
+          // actions: [
+          //   Padding(
+          //     padding: EdgeInsets.symmetric(horizontal: 8.w),
+          //     child: Icon(Icons.search, size: 25.sp),
+          //   ),
 
-            Padding(
-              padding: EdgeInsets.only(right: 20.w),
-              child: StreamBuilder<QuerySnapshot>(
-                stream:
-                    _firestore
-                        .collection('carts')
-                        .doc(user.uid)
-                        .collection('items')
-                        .snapshots(),
-                builder: (context, snapshot) {
-                  final int cartCount = snapshot.data?.docs.length ?? 0;
+          //   Padding(
+          //     padding: EdgeInsets.only(right: 20.w),
+          //     child: StreamBuilder<QuerySnapshot>(
+          //       stream:
+          //           _firestore
+          //               .collection('carts')
+          //               .doc(user.uid)
+          //               .collection('items')
+          //               .snapshots(),
+          //       builder: (context, snapshot) {
+          //         final int cartCount = snapshot.data?.docs.length ?? 0;
 
-                  return Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Icon(
-                        Icons.shopping_cart_outlined,
-                        color: const Color(0xffA73927),
-                        size: 28.sp,
-                      ),
+          //         return Stack(
+          //           clipBehavior: Clip.none,
+          //           children: [
+          //             Icon(
+          //               Icons.shopping_cart_outlined,
+          //               color: const Color(0xffA73927),
+          //               size: 28.sp,
+          //             ),
 
-                      if (cartCount > 0)
-                        Positioned(
-                          right: -5.w,
-                          top: -5.h,
-                          child: Container(
-                            height: 17.w,
-                            width: 17.w,
-                            decoration: BoxDecoration(
-                              color: Colors.red,
-                              borderRadius: BorderRadius.circular(20.r),
-                            ),
-                            child: Center(
-                              child: Text(
-                                cartCount.toString(),
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 9.sp,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  );
-                },
-              ),
-            ),
-          ],
+          //             if (cartCount > 0)
+          //               Positioned(
+          //                 right: -5.w,
+          //                 top: -5.h,
+          //                 child: Container(
+          //                   height: 17.w,
+          //                   width: 17.w,
+          //                   decoration: BoxDecoration(
+          //                     color: Colors.red,
+          //                     borderRadius: BorderRadius.circular(20.r),
+          //                   ),
+          //                   child: Center(
+          //                     child: Text(
+          //                       cartCount.toString(),
+          //                       style: TextStyle(
+          //                         color: Colors.white,
+          //                         fontSize: 9.sp,
+          //                         fontWeight: FontWeight.bold,
+          //                       ),
+          //                     ),
+          //                   ),
+          //                 ),
+          //               ),
+          //           ],
+          //         );
+          //       },
+          //     ),
+          //   ),
+          // ],
         ),
 
         // ======================================================
@@ -412,10 +423,17 @@ class CartTab extends StatelessWidget {
             for (final doc in cartItems) {
               final data = doc.data() as Map<String, dynamic>;
 
-              final price = getPrice(data['price']);
-              final quantity = getQuantity(data['quantity']);
+              final double storedTotalPrice = getPrice(data['totalPrice']);
 
-              subtotal += price * quantity;
+              if (storedTotalPrice > 0) {
+                subtotal += storedTotalPrice;
+              } else {
+                // Fallback for older cart items
+                final double price = getPrice(data['price']);
+                final int quantity = getQuantity(data['quantity']);
+
+                subtotal += price * quantity;
+              }
             }
 
             // ==================================================
@@ -431,19 +449,57 @@ class CartTab extends StatelessWidget {
             for (final doc in cartItems) {
               final data = doc.data() as Map<String, dynamic>;
 
-              final price = getPrice(data['price']);
-              final quantity = getQuantity(data['quantity']);
+              final double price = getPrice(data['price']);
+              final double totalPrice = getPrice(data['totalPrice']);
+
+              final int quantity = getQuantity(data['quantity']);
+
+              double totalWeightKg = 0.0;
+
+              final dynamic weightValue = data['totalWeightKg'];
+
+              if (weightValue is num) {
+                totalWeightKg = weightValue.toDouble();
+              } else if (weightValue is String) {
+                totalWeightKg = double.tryParse(weightValue) ?? 0.0;
+              }
+
+              // Fallback for old cart items
+              if (totalWeightKg == 0.0) {
+                final dynamic oldWeight = data['weight'];
+
+                if (oldWeight is String) {
+                  totalWeightKg =
+                      double.tryParse(oldWeight.replaceAll('kg', '').trim()) ??
+                      0.0;
+                }
+              }
+
+              String cartImage = '';
+
+              for (final key in ['image', 'imageUrl', 'productImage']) {
+                final value = data[key];
+
+                if (value is String && value.trim().isNotEmpty) {
+                  cartImage = value.trim();
+                  break;
+                }
+              }
 
               cartWidgets.add(
                 CartItem(
                   productId: doc.id,
-                  productDocId: data['productDocId']?.toString(),
+                  productDocId:
+                      data['productDocId']?.toString() ??
+                      data['productId']?.toString(),
                   userId: userId,
-                  image: data['image']?.toString() ?? '',
+                  image: cartImage,
                   name: data['name']?.toString() ?? '',
                   brand: data['brand']?.toString() ?? '',
                   price: price,
+                  totalPrice: totalPrice > 0 ? totalPrice : price * quantity,
                   quantity: quantity,
+                  totalWeightKg: totalWeightKg,
                 ),
               );
             }
@@ -664,7 +720,9 @@ class CartItem extends StatelessWidget {
   final String name;
   final String brand;
   final double price;
+  final double totalPrice;
   final int quantity;
+  final double totalWeightKg;
 
   const CartItem({
     super.key,
@@ -675,7 +733,9 @@ class CartItem extends StatelessWidget {
     required this.name,
     required this.brand,
     required this.price,
+    required this.totalPrice,
     required this.quantity,
+    required this.totalWeightKg,
   });
 
   // ------------------------------------------------------------
@@ -700,12 +760,19 @@ class CartItem extends StatelessWidget {
       return;
     }
 
+    final double newTotalPrice = price * newQuantity;
+    final double newTotalWeight = totalWeightKg / quantity * newQuantity;
+
     await FirebaseFirestore.instance
         .collection('carts')
         .doc(userId)
         .collection('items')
         .doc(productId)
-        .update({'quantity': newQuantity});
+        .update({
+          'quantity': newQuantity,
+          'totalPrice': newTotalPrice,
+          'totalWeightKg': newTotalWeight,
+        });
   }
 
   @override
@@ -713,7 +780,7 @@ class CartItem extends StatelessWidget {
     return OrientationBuilder(
       builder: (context, orientation) {
         final bool isLandscape = orientation == Orientation.landscape;
-        final double totalPrice = price * quantity;
+        // final double totalPrice = price * quantity;
 
         final double imageSize = isLandscape ? 65.w : 75.w;
 
@@ -807,6 +874,17 @@ class CartItem extends StatelessWidget {
                         // ------------------------------------------------
                         Text(
                           brand,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.grey,
+                            fontSize: isLandscape ? 11.sp : 12.sp,
+                          ),
+                        ),
+                        SizedBox(height: isLandscape ? 2.h : 4.h),
+
+                        Text(
+                          'Weight: ${totalWeightKg.toStringAsFixed(0)}kg',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(

@@ -107,7 +107,7 @@ class _HomePageState extends State<HomePage> {
       final productId = product['id'].toString();
 
       final String weight = '2kg';
-      final double price = getPrice(product['price2kg']);
+      final double price = getPrice(product['price2Kg']);
       debugPrint('====================================');
       debugPrint('PRODUCT NAME: ${product['name']}');
       debugPrint('ORIGINAL PRICE: ${product['price']}');
@@ -931,13 +931,13 @@ class _HomePageState extends State<HomePage> {
                 'imageUrl': data['imageUrl']?.toString() ?? '',
 
                 // WEIGHT PRICES
-                'price2kg': data['price2kg'] ?? data['price2Kg'] ?? 0,
-                'price5kg': data['price5kg'] ?? data['price5Kg'] ?? 0,
-                'price10kg': data['price10kg'] ?? data['price10Kg'] ?? 0,
+                'price2Kg': data['price2Kg'] ?? data['price2kg'] ?? 0,
+                'price5Kg': data['price5Kg'] ?? data['price5kg'] ?? 0,
+                'price10Kg': data['price10Kg'] ?? data['price10kg'] ?? 0,
 
                 // Default price shown on Home = 2kg price
                 'price':
-                    data['price2kg'] ?? data['price2Kg'] ?? data['price'] ?? 0,
+                    data['price2Kg'] ?? data['price2kg'] ?? data['price'] ?? 0,
 
                 'rating': data['rating'] ?? 0,
 
