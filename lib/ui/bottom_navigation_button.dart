@@ -14,7 +14,7 @@ class BottomNavigationButton extends StatefulWidget {
 
 class _BottomNavigationButtonState extends State<BottomNavigationButton> {
   int selectedIndex = 0;
- 
+
   void goToWishlist() {
     setState(() {
       selectedIndex = 2;
@@ -26,7 +26,13 @@ class _BottomNavigationButtonState extends State<BottomNavigationButton> {
     final List<Widget> pages = [
       HomePage(onGoToWishlist: goToWishlist),
       const SearchPage(),
-      const WishListPage(),
+      WishListPage(
+        onGoToHome: () {
+          setState(() {
+            selectedIndex = 0;
+          });
+        },
+      ),
       const ProfilePage(),
     ];
 

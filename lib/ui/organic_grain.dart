@@ -431,23 +431,25 @@ class _OrganicGrainState extends State<OrganicGrain> {
                 fontWeight: FontWeight.bold,
               ),
             ),
-            actions: [
-              Padding(
-                padding: EdgeInsets.only(right: 30.w),
-                child: GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => WishListPage()),
-                    );
-                  },
-                  child: Icon(
-                    Icons.shopping_cart_outlined,
-                    color: Color(0xffA73927),
-                  ),
-                ),
-              ),
-            ],
+          actions: [
+  Padding(
+    padding: EdgeInsets.only(right: 30.w),
+    child: GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const WishListPage(),
+          ),
+        );
+      },
+      child: const Icon(
+        Icons.shopping_cart_outlined,
+        color: Color(0xffA73927),
+      ),
+    ),
+  ),
+],
           ),
 
           body: SafeArea(

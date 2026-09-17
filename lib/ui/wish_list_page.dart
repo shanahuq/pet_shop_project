@@ -133,7 +133,9 @@ Future<void> openProductDetails(
 /// ============================================================
 
 class WishListPage extends StatefulWidget {
-  const WishListPage({super.key});
+  final VoidCallback? onGoToHome;
+
+  const WishListPage({super.key, this.onGoToHome});
 
   @override
   State<WishListPage> createState() => _WishListPageState();
@@ -164,10 +166,15 @@ class _WishListPageState extends State<WishListPage> {
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_rounded),
             onPressed: () {
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (context) => const HomePage()),
-                (route) => false,
-              );
+              if (widget.onGoToHome != null) {
+                // Condition 1:
+                // Wishlist opened from BottomNavigation
+                widget.onGoToHome!();
+              } else {
+                // Condition 2:
+                // Wishlist opened from OrganicGrain
+                Navigator.pop(context);
+              }
             },
           ),
 
